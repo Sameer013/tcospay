@@ -395,9 +395,10 @@ label {
                                     </div>
 
                                     <div class="flex items-center">
-                                        <label for="txt_status" class="w-1/3">Status:</label>
-                                        <input type="text" id="txt_status" name="txt_status" placeholder="Enter Status"
-                                            readonly class="p-2 w-2/3 bg-transparent">
+                                        <label for="txt_finance_pan" class="w-1/3">PAN:</label>
+                                        <input type="text" id="txt_finance_pan" name="txt_finance_pan"
+                                            placeholder="Enter PAN No" maxlength="10" readonly
+                                            class="p-2 w-2/3 bg-transparent">
                                     </div>
 
                                     <div class="flex items-center">
@@ -1232,9 +1233,11 @@ label {
                                             </div>
 
                                             <div class="col-span-12 sm:col-span-6">
-                                                <label class="form-label">Status: *</label>
-                                                <input type="text" class="form-control rounded-pill text-dark"
-                                                    name="txt_Status" id="txt_Status" placeholder="Status" />
+                                                <label class="form-label" for="txt_FinancePan">PAN: *</label>
+                                                <input type="text" class="form-control txt_pan rounded-pill text-dark"
+                                                    name="txt_Pan" id="txt_FinancePan" placeholder="PAN No"
+                                                    maxlength="10"
+                                                    oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" />
                                             </div>
                                             <div class="col-span-12 sm:col-span-6">
                                                 <label class="form-label">Basic: *</label>
@@ -1275,7 +1278,7 @@ label {
                                         <button type="button" data-tw-dismiss="modal"
                                             class="btn btn-outline-secondary w-20 mr-1 rounded-full">Cancel</button>
                                         <button id="btn_update_finance" data-tw-dismiss="modal"
-                                            class=" btn btn-primary w-20 rounded-full">Update</button>
+                                            class="btn_update btn btn-primary w-20 rounded-full">Update</button>
                                     </div>
 
                                     <!-- END: Modal Footer -->
@@ -2105,7 +2108,6 @@ function loadAllowanceDataTable(empno) {
         serverSide : true,
         ajax       : "ajax_indall.php?empno=" + empno,
         columns    : [
-            { data: "Code"      },
             { data: "Desc"      },
             { data: "Flag"      },
             { data: "Allorded"  },
@@ -2157,7 +2159,7 @@ function load_data_finance(EMPNO) {
             $("#txt_bank").val(data.DESCR);
             $("#txt_accNo").val(data.ACCNO);
             $("#txt_esic").val(data.ADDRESS1);
-            $("#txt_status").val(data.STATUS);
+            $("#txt_finance_pan").val(data.PAN);
             $("#txt_basic").val(data.BASIC);
             $("#txt_payScale").val(data.PAYSCALE);
             $("#txt_pf").val(data.PFACNO);
@@ -2338,7 +2340,7 @@ function show_general_data(empno) {
             $("#txt_Bank").val(data.BID);
             $("#txt_AccNo").val(data.ACCNO);
             $("#txt_Esic").val(data.ADDRESS1);
-            $("#txt_Status").val(data.STATUS);
+            $("#txt_FinancePan").val(data.PAN);
             $("#txt_Basic").val(data.BASIC);
             $(".txt_payScale").val(data.PAYSCALE);
             $("#txt_Pf").val(data.PFACNO);
@@ -2385,9 +2387,18 @@ function show_general_data(empno) {
 $(".btn_update").on("click", async function (event) {
     saveAndTurnOffCamera();
 
-    const form     = $(".frm_user");
-    let   json     = convertFormToJSON(form);
-    const empno    = $("#txt_EmpNo").val();
+    const form  = $(this).closest(".modal-content").find("form.frm_user");
+    let   json  = convertFormToJSON(form);
+    const empno = form.find(".txt_EmpNo, .empno").val()
+        || $("#txt_EmpNo").val()
+        || getParameterByName('empno');
+
+    if (!empno) {
+        alert("Employee number is required for update");
+        return;
+    }
+
+    json.EmpNo = empno;
 
     // Attach photo: prefer file upload, fall back to webcam snapshot.
     const selectedImage = $("#txt_image")[0].files[0];

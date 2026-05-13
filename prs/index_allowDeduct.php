@@ -4,6 +4,7 @@ if ((!isset($_SESSION['user']))) {
     header('refresh: 1;url=login.php');
     die('Please Login First...<br><br>Redirectiing in a sec to Login Page');
 }
+require_once 'includes/dbconn.php';
 ?>
 <!DOCTYPE html>
 <html lang="en" class="light">
@@ -67,9 +68,29 @@ if ((!isset($_SESSION['user']))) {
             <div class="grid grid-cols-12 gap-6 mt-5">
 
                 <div class="intro-y col-span-12 lg:col-span-12">
-                    <button class="btn btn-primary w-20 shadow-md mr-2  rounded-full"
-                        onclick="add_new()" data-tw-toggle="modal"
-                        data-tw-target="#header-footer-modal-preview-view">Add</button>
+                    <div class="intro-y box p-5">
+                        <div class="grid grid-cols-12 gap-4 items-end">
+                            <div class="col-span-12 md:col-span-5">
+                                <label for="filter_empno" class="form-label">Employee</label>
+                                <select name="filter_empno" id="filter_empno" class="form-control">
+                                    <option value="" selected disabled>--Select Employee--</option>
+                                    <?php
+                                    $query = $db->query("SELECT EMPNO, NAME FROM empmast ORDER BY EMPNO");
+                                    while ($row = $query->fetch(PDO::FETCH_ASSOC)) {
+                                        $empno = $row['EMPNO'];
+                                        $name = $row['NAME'];
+                                        echo "<option value='$empno'>$empno - $name</option>";
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                            <div class="col-span-12 md:col-span-2">
+                                <button class="btn btn-primary w-20 shadow-md rounded-full"
+                                    onclick="return add_new()" data-tw-toggle="modal"
+                                    data-tw-target="#header-footer-modal-preview-view">Add</button>
+                            </div>
+                        </div>
+                    </div>
                     <!-- BEGIN: Responsive Table -->
                     <div class="intro-y box mt-5">
                         <div class="p-5" id="responsive-table">
@@ -156,12 +177,11 @@ if ((!isset($_SESSION['user']))) {
                                             <select name="txt_empname" id="txt_empname" class="form-control">
                                                 <option value="" selected disabled>--Select Employee Name--</option>
                                                 <?php
-                                                require_once 'includes/dbconn.php';
-                                                $query = $db->query("SELECT EMPNO, NAME FROM empmast");
+                                                $query = $db->query("SELECT EMPNO, NAME FROM empmast ORDER BY EMPNO");
                                                 while ($row = $query->fetch(PDO::FETCH_ASSOC)) {
                                                     $empno = $row['EMPNO'];
                                                     $name = $row['NAME'];
-                                                    echo "<option value='$empno'>$name</option>";
+                                                    echo "<option value='$empno'>$empno - $name</option>";
                                                 }
                                                 ?>
                                             </select>
@@ -259,12 +279,21 @@ if ((!isset($_SESSION['user']))) {
     ?>
 </body>
 <script>
+    function getSelectedEmployee() {
+        return $("#filter_empno").val() || "";
+    }
+
     var dtable = $('#table').DataTable({
         buttons: ['copy', 'excel', 'pdf'],
         "processing": true,
         "searching": true,
         "serverSide": true,
-        "ajax": "ajax_allowDeduct.php",
+        "ajax": {
+            "url": "ajax_allowDeduct.php",
+            "data": function(d) {
+                d.empno = getSelectedEmployee();
+            }
+        },
         "columns": [{
                 "data": "code"
             },
@@ -281,14 +310,7 @@ if ((!isset($_SESSION['user']))) {
                 "data": "allowance"
             },
             {
-                "data": "prcamtflag",
-                "render": function(data, type, row, meta) {
-                    if (data == '%') {
-                        return 'Yes';
-                    } else {
-                        return data;
-                    }
-                }
+                "data": "prcamtflag"
             },
             {
                 "data": "allredncountinuity"
@@ -315,6 +337,10 @@ if ((!isset($_SESSION['user']))) {
 
 
     function remove_data(code, descr) {
+        if (!getSelectedEmployee()) {
+            Swal.fire('Select an employee first', '', 'warning');
+            return;
+        }
         Swal.fire({
             title: 'Are you sure to Delete?',
             text: 'You won\'t be able to revert this!',
@@ -358,16 +384,24 @@ if ((!isset($_SESSION['user']))) {
     function add_new() {
         $("#btn_save").show();
         $("#btn_update").hide();
-        $("#txt_id").removeAttr("readonly");
         $('#frm_user').trigger("reset");
+        const empno = getSelectedEmployee();
+        if (!empno) {
+            Swal.fire('Select an employee first', 'Pick an employee from the filter before adding a record.', 'warning');
+            return false;
+        }
+        $("#txt_code").val(empno);
+        $("#txt_empname").val(empno);
+        $("input[name='txt_allow'][value='a']").prop("checked", true);
+        $("input[name='txt_stillvalid'][value='Y']").prop("checked", true);
+        return true;
     }
 
     $("#btn_update").on("click", function() {
         const form = $("#frm_user");
         const json = convertFormToJSON(form);
-        console.log(json);
         var code = $("#txt_code").val();
-        var descr = $("#txt_desc").val();
+        var descr = $("#txt_desc").data("original-descr") || $("#txt_desc").val();
         $.ajax({
             url: '../prsApi/indAllow/' + descr + '/' + code,
             type: 'PUT',
@@ -375,19 +409,30 @@ if ((!isset($_SESSION['user']))) {
             contentType: 'application/json',
             success: function(data) {
                 if (data.status == "Ok") {
-                    $("#header-footer-modal-preview").hide();
-                    dtable.draw();
+                    dtable.ajax.reload(null, false);
+                } else {
+                    Swal.fire(data.msg, '', 'error');
                 }
-                //console.log("..."+data);
+            },
+            error: function(xhr, textStatus, errorThrown) {
+                Swal.fire('Error', 'An error occurred while updating the data.', 'error');
             },
             data: JSON.stringify(json)
         });
     });
 
     $("#btn_save").on("click", function() {
+        const empno = getSelectedEmployee();
+        if (!empno) {
+            Swal.fire('Select an employee first', 'Pick an employee from the filter before adding a record.', 'warning');
+            return;
+        }
+
+        $("#txt_code").val(empno);
+        $("#txt_empname").val(empno);
+
         const form = $("#frm_user");
         const json = convertFormToJSON(form);
-        console.log(json);
         $.ajax({
             url: '../prsApi/indAllow',
             type: 'POST',
@@ -395,10 +440,13 @@ if ((!isset($_SESSION['user']))) {
             contentType: 'application/json',
             success: function(data) {
                 if (data.status == "Ok") {
-                    $("#header-footer-modal-preview").hide();
-                    dtable.draw();
+                    dtable.ajax.reload(null, false);
+                } else {
+                    Swal.fire(data.msg, '', 'error');
                 }
-                console.log("..." + data);
+            },
+            error: function(xhr, textStatus, errorThrown) {
+                Swal.fire('Error', 'An error occurred while saving the data.', 'error');
             },
             data: JSON.stringify(json)
         });
@@ -414,17 +462,36 @@ if ((!isset($_SESSION['user']))) {
             success: function(res) {
                 $("#txt_code").val(res.EMPNO);
                 $("#txt_empname").val(res.EMPNO);
-                $("#txt_desc").val(res.DESCR);
-                $("#txt_allow").val(res.ALLREDNFLAG);
+                $("#txt_empname").prop("disabled", true);
+                $("#txt_desc").val(res.DESCR).data("original-descr", res.DESCR);
+                $("input[name='txt_allow'][value='" + res.ALLREDNFLAG + "']").prop("checked", true);
                 $("#txt_value").val(res.ALLOWANCE);
-                $("#txt_flag").val(res.PERCEMTFLAG);
-                $("#txt_stillvalid").val(res.ALLREDNCOUNTINUITY);
+                $("#txt_flag").val(res.PRCAMTFLAG);
+                $("input[name='txt_stillvalid'][value='" + res.ALLREDNCONTINUITY + "']").prop("checked", true);
+            },
+            error: function() {
+                Swal.fire('Error', 'Unable to load the selected record.', 'error');
             }
         });
     }
 
+    $("#filter_empno").on("change", function() {
+        dtable.ajax.reload();
+    });
+
     $(document).ready(function() {
         dtable.draw();
+    });
+
+    $('#header-footer-modal-preview-view').on('show.tw.modal', function() {
+        if ($("#btn_save").is(":visible")) {
+            $("#txt_empname").prop("disabled", false);
+        }
+    });
+
+    $('#header-footer-modal-preview-view').on('hidden.tw.modal', function() {
+        $("#txt_empname").prop("disabled", false);
+        $("#txt_desc").removeData("original-descr");
     });
 
     function displayImg(input, _this) {

@@ -759,6 +759,11 @@ return function (App $app) {
     try {
         $db    = getconn();
         $users = $request->getParsedBody();
+        if (!is_array($users)) {
+            $rawBody = (string) $request->getBody();
+            $jsonBody = json_decode($rawBody, true);
+            $users = is_array($jsonBody) ? $jsonBody : [];
+        }
  
         // ─────────────────────────────────────────────
         // Helpers
@@ -800,7 +805,7 @@ return function (App $app) {
         // ─────────────────────────────────────────────
         // Photo: strip base64 header and decode to binary
         // ─────────────────────────────────────────────
-        $photoData = $users['PHOTO'] ?? null;
+        $photoData = $users['PHOTO'] ?? $users['txt_PHOTO'] ?? null;
         if (!empty($photoData) && strpos($photoData, 'data:image') === 0) {
             $photoData = base64_decode(
                 preg_replace('#^data:image/\w+;base64,#i', '', $photoData)
@@ -837,7 +842,7 @@ return function (App $app) {
         $uanNo       = $nullIfEmpty($users['UanNo']     ?? null);
         $exper       = $nullIfEmpty($users['Exper']     ?? null);
         $shcode      = $nullIfEmpty($users['Shcode']    ?? null);
-        $empno       = $nullIfEmpty($users['EmpNo']     ?? null);
+        $empno       = $nullIfEmpty($users['EmpNo']     ?? $users['txt_EmpNo'] ?? $args['EMPCODE'] ?? null);
  
         // Numeric/DECIMAL fields — NULL when empty to avoid SQLSTATE 1366
         $bank        = $nullIfEmpty($users['Bank']         ?? null); // FK — keep as-is (int or null)
@@ -852,6 +857,10 @@ return function (App $app) {
         $dor         = $dateOrNull($users['Dor'] ?? null);
         $doc         = $dateOrNull($users['Doc'] ?? null);
         $doi         = $dateOrNull($users['Doi'] ?? null);
+
+        if ($empno === null) {
+            throw new Exception("Employee number is required for update");
+        }
  
         // ─────────────────────────────────────────────
         // Build & Execute Query
@@ -1231,6 +1240,11 @@ return function (App $app) {
 		$group->post('', function (Request $request, Response $response, $args) {
 			try {
 				$users = $request->getParsedBody();
+				if (!is_array($users)) {
+					$rawBody = (string) $request->getBody();
+					$jsonBody = json_decode($rawBody, true);
+					$users = is_array($jsonBody) ? $jsonBody : [];
+				}
 				$sql = "INSERT INTO indall(EMPNO, DESCR, PRCAMTFLAG, ALLREDNFLAG, ALLOWANCE, ALLREDNCONTINUITY)
             VALUES(:txt_code, :txt_desc, :txt_flag, :txt_allow, :txt_value, :txt_stillvalid)";
 				$db = getconn();
@@ -1263,12 +1277,17 @@ return function (App $app) {
 		$group->put('/{descr}/{CODE}', function (Request $request, Response $response, $args) {
 			try {
 
-				$body = $request->getBody();
 				$db = getconn();
 				$users = $request->getParsedBody();
+				if (!is_array($users)) {
+					$rawBody = (string) $request->getBody();
+					$jsonBody = json_decode($rawBody, true);
+					$users = is_array($jsonBody) ? $jsonBody : [];
+				}
 			$sql = "UPDATE indall SET DESCR=:txt_desc, PRCAMTFLAG=:txt_flag, ALLREDNFLAG=:txt_allow, ALLOWANCE=:txt_value, ALLREDNCONTINUITY=:txt_stillvalid WHERE EMPNO=:txt_code AND DESCR=:desc";
 				$stmt = $db->prepare($sql);
-				$stmt->bindParam(":txt_code", $users['code']);
+				$code = $users['code'] ?? $args['CODE'];
+				$stmt->bindParam(":txt_code", $code);
 				$stmt->bindParam(":desc", $args['descr']);
 				$stmt->bindParam(":txt_desc", $users['desc']);
 				$stmt->bindParam(":txt_flag", $users['flag']);
