@@ -324,7 +324,7 @@ label {
                                         
                                         <div class="flex items-center">
                                             <label for="txt_dor" class="w-1/3 font-medium">Date of Leaving:</label>
-                                            <input type="text" class="input-box w-2/3" id="txt_dor" name="txt_dor"
+                                            <input type="text" class="input-box w-2/3 txt_dor" id="txt_dor" name="txt_dor"
                                                 placeholder="Enter DOL" readonly>
                                         </div>
                                     </div>
@@ -388,11 +388,11 @@ label {
                                             class="p-2 w-2/3 bg-transparent">
                                     </div>
 
-                                    <div class="flex items-center">
+                                    <!-- <div class="flex items-center">
                                         <label for="txt_esic" class="w-1/3">ESIC No:</label>
                                         <input type="text" id="txt_esic" name="txt_esic" placeholder="Enter ESIC No"
                                             readonly class="p-2 w-2/3 bg-transparent">
-                                    </div>
+                                    </div> -->
 
                                     <div class="flex items-center">
                                         <label for="txt_finance_pan" class="w-1/3">PAN:</label>
@@ -992,9 +992,9 @@ label {
                                                     name="txt_Doj" id="txt_Doj" placeholder="Enter  Date of Joining:" />
                                             </div>
                                             <div class="col-span-12 sm:col-span-4">
-                                                <label class="form-label" for="txt_Dor">Date of Leaving:</label>
-                                                <input type="date" class="form-control rounded-pill text-dark"
-                                                    name="txt_Dor" for="txt_Dor" placeholder="Enter Date of Leaving:" />
+                                                <label class="form-label" for="txt_dor">Date of Leaving:</label>
+                                                <input type="date" class="form-control rounded-pill text-dark txt_dor"
+                                                    name="txt_dor" id="txt_dor" placeholder="Enter Date of Leaving:" />
                                             </div>
                                             <div class="col-span-12 sm:col-span-4">
                                                 <label class="form-label" for="txt_Doc">Date of Confirmation:*</label>
@@ -1224,13 +1224,13 @@ label {
                                                     maxlength="17"
                                                     oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
                                             </div>
-                                            <div class="col-span-12 sm:col-span-6">
+                                            <!-- <div class="col-span-12 sm:col-span-6">
                                                 <label class="form-label " for="status">ESIC No. :</label>
                                                 <input type="text" class="form-control rounded-pill text-dark"
                                                     name="txt_Esic" id="txt_Esic" placeholder="ESIC No." maxlength="17"
                                                     oninput="this.value = this.value.replace(/[^0-9]/g, '')">
 
-                                            </div>
+                                            </div> -->
 
                                             <div class="col-span-12 sm:col-span-6">
                                                 <label class="form-label" for="txt_FinancePan">PAN: *</label>
@@ -1600,16 +1600,22 @@ label {
                                     <form id="others_form" class="frm_user" name="frm_user" action="" method="post">
                                         <div class="modal-body grid grid-cols-12 gap-4 gap-y-3">
                                             <input id="txt_EmpNo" name="txt_EmpNo" type="hidden"
-                                                class="form-control  rounded-full" placeholder="Name" readonly>
+                                                class="form-control txt_EmpNo rounded-full" placeholder="Name" readonly>
                                             <div class="col-span-12 sm:col-span-6">
-                                                <label class="form-label">Relationship: *</label>
-                                                <input type="text" class="form-control rounded-pill text-dark"
-                                                    name="txt_Relation" id="txt_Relation_modal" placeholder="Relationship" />
+                                                <label class="form-label" for="txt_Relation_modal">Relationship: *</label>
+                                                <select class="form-control rounded-pill text-dark"
+                                                    name="txt_Relation" id="txt_Relation_modal">
+                                                    <option value="" selected disabled>Select Relationship</option>
+                                                    <option value="Father">Father</option>
+                                                    <option value="Husband">Husband</option>
+                                                    <option value="Mother">Mother</option>
+                                                    <option value="Guardian">Guardian</option>
+                                                </select>
                                             </div>
                                             <div class="col-span-12 sm:col-span-6">
-                                                <label class="form-label">Father/Husband Name:*</label>
+                                                <label class="form-label" id="lbl_Gname_modal" for="txt_Gname_modal">Father/Husband Name:*</label>
                                                 <input type="text" class="form-control rounded-pill text-dark"
-                                                    name="txt_Gname" id="txt_Gname_modal" placeholder="Father/Husband Name" />
+                                                    name="txt_Gname" id="txt_Gname_modal" placeholder="Enter Father/Husband Name" />
                                             </div>
                                             <div class="col-span-12 sm:col-span-6">
                                                 <label class="form-label">Edu. Qualification: *</label>
@@ -1654,7 +1660,7 @@ label {
                                         <button type="button" data-tw-dismiss="modal"
                                             class="btn btn-outline-secondary w-20 mr-1 rounded-full">Cancel</button>
                                         <button id="btn_other_update" data-tw-dismiss="modal"
-                                            class="btn btn-primary w-20 rounded-full">Update</button>
+                                            class="btn_update btn btn-primary w-20 rounded-full">Update</button>
                                     </div>
 
                                     <!-- END: Modal Footer -->
@@ -1687,25 +1693,92 @@ label {
 
 /** Index of the currently displayed employee in the full list (used by Prev/Next). */
 var currentIndex = 0;
+const employeeNumbers = <?php echo json_encode(array_values(array_column($empnames, 'EMPNO'))); ?>;
+let currentEmployeeData = null;
+let currentEmployeeNo = null;
+let leaveTableEmpno = null;
+let loanTableEmpno = null;
+let allowanceTableEmpno = null;
 
 $(document).ready(function () {
     // Load the employee indicated by the URL ?empno= param, or index 0 if none.
     load_data_general(currentIndex, getParameterByName('empno'));
     updateButtonStatus();
-    $('#txt_Relation').on('change', function () {
-        let value = $(this).val(); // gets option value
-
-        if (value) {
-            $('#lbl_Gname').text(value + " Name: *");
-            $('#txt_Gname').attr('placeholder', "Enter " + value + " Name");
-        }
+    $('#txt_Relation_modal').on('change', function () {
+        updateRelationLabel($(this).val());
     });
     // Bind Prev / Next navigation buttons.
     $(".nextBtn").click(next_data);
     $(".prevBtn").click(prev_data);
+    $("[data-tw-target='#finance-tab']").on('click', function () {
+        if (currentEmployeeNo) {
+            loadAllowanceDataTable(currentEmployeeNo);
+        }
+    });
+    $("[data-tw-target='#leave-tab']").on('click', function () {
+        if (currentEmployeeNo) {
+            loadLeaveDataTable(currentEmployeeNo);
+        }
+    });
+    $("[data-tw-target='#loan-tab']").on('click', function () {
+        if (currentEmployeeNo) {
+            loadLoanDataTable(currentEmployeeNo);
+        }
+    });
 
 
 });
+
+function updateRelationLabel(value) {
+    const relation = value || 'Father/Husband';
+    $('#lbl_Gname_modal').text(relation + " Name:*");
+    $('#txt_Gname_modal').attr('placeholder', "Enter " + relation + " Name");
+}
+
+$('#header-footer-modal-preview-other-view').on('hidden.tw.modal', function () {
+    updateRelationLabel('');
+});
+
+function loadEmployeeBundle(empno) {
+    if (!empno) return;
+
+    $.ajax({
+        url    : '../prsApi/empmast/' + empno,
+        method : "GET",
+        success: function (data) {
+            if (!data) return;
+
+            currentEmployeeData = data;
+            currentEmployeeNo = data.EMPNO;
+            updateEmployeeInformation(data);
+            updateLeaveSummary(data);
+            updateUrlWithEmpNo(data.EMPNO);
+            populateFinanceView(data);
+            populateLeaveView(data);
+            populateLoanView(data);
+            populateIncentiveView(data);
+            populateOtherView(data);
+            loadActiveTabDataTables(data.EMPNO);
+        },
+        error: function (xhr, textStatus, errorThrown) {
+            console.error("loadEmployeeBundle: " + errorThrown);
+        }
+    });
+}
+
+function loadActiveTabDataTables(empno) {
+    if (!empno) return;
+
+    if ($("[data-tw-target='#finance-tab']").hasClass('active')) {
+        loadAllowanceDataTable(empno);
+    }
+    if ($("[data-tw-target='#leave-tab']").hasClass('active')) {
+        loadLeaveDataTable(empno);
+    }
+    if ($("[data-tw-target='#loan-tab']").hasClass('active')) {
+        loadLoanDataTable(empno);
+    }
+}
 
 
 // ─────────────────────────────────────────────
@@ -1730,21 +1803,7 @@ document.getElementById('empname').addEventListener('change', function () {
  * @param {string|number} empno - Employee number to load.
  */
 function load_search_data(empno) {
-    $.ajax({
-        url: '../prsApi/empmast/' + empno,
-        method: "GET",
-        success: function (data) {
-            if (data) {
-                console.log('Search data loaded:', data);
-                updateEmployeeInformation(data);
-                updateLeaveSummary(data);
-                updateUrlWithEmpNo(data.EMPNO);
-            }
-        },
-        error: function (xhr, textStatus, errorThrown) {
-            console.error("Error in load_search_data: " + errorThrown);
-        }
-    });
+    loadEmployeeBundle(empno);
 }
 
 
@@ -1876,37 +1935,11 @@ $("#btn_general_save").on("click", async function (event) {
  */
 function load_data_general(index, EMPNO) {
     if (EMPNO) {
-        $.ajax({
-            url    : '../prsApi/empmast/' + EMPNO,
-            method : "GET",
-            success: function (data) {
-                if (data) {
-                    updateEmployeeInformation(data);
-                    updateLeaveSummary(data);
-                    updateUrlWithEmpNo(data.EMPNO);
-                }
-            },
-            error: function (xhr, textStatus, errorThrown) {
-                console.error("load_data_general (by EMPNO): " + errorThrown);
-            }
-        });
+        loadEmployeeBundle(EMPNO);
     } else {
-        // Fetch the full list and pick by index.
-        $.ajax({
-            url    : '../prsApi/empmast',
-            method : "GET",
-            success: function (data) {
-                if (index >= 0 && index < data.length) {
-                    const res = data[index];
-                    updateEmployeeInformation(res);
-                    updateLeaveSummary(res);
-                    updateUrlWithEmpNo(res.EMPNO);
-                }
-            },
-            error: function (xhr, textStatus, errorThrown) {
-                console.error("load_data_general (by index): " + errorThrown);
-            }
-        });
+        if (index >= 0 && index < employeeNumbers.length) {
+            loadEmployeeBundle(employeeNumbers[index]);
+        }
     }
 }
 
@@ -1917,20 +1950,7 @@ function load_data_general(index, EMPNO) {
  */
 function load_updated_data(EMPNO) {
     if (EMPNO) {
-        $.ajax({
-            url    : '../prsApi/empmast/' + EMPNO,
-            method : "GET",
-            success: function (data) {
-                if (data) {
-                    updateEmployeeInformation(data);
-                    updateLeaveSummary(data);
-                    updateUrlWithEmpNo(data.EMPNO);
-                }
-            },
-            error: function (xhr, textStatus, errorThrown) {
-                console.error("load_updated_data: " + errorThrown);
-            }
-        });
+        loadEmployeeBundle(EMPNO);
     }
 }
 
@@ -1986,6 +2006,58 @@ function updateLeaveSummary(res) {
     $("#txt_openingMedLeave").text(res.oml);
 }
 
+function populateFinanceView(data) {
+    $("#txt_finance_name").val(data.NAME);
+    $("#txt_bank").val(data.DESCR);
+    $("#txt_accNo").val(data.ACCNO);
+    $("#txt_esic").val(data.ADDRESS1);
+    $("#txt_finance_pan").val(data.PAN);
+    $("#txt_basic").val(data.BASIC);
+    $("#txt_payScale").val(data.PAYSCALE);
+    $("#txt_pf").val(data.PFACNO);
+    $("#txt_nod").val(data.DOB);
+}
+
+function populateLeaveView(data) {
+    const daysOfWeek = {
+        1: "Sunday", 2: "Monday", 3: "Tuesday",
+        4: "Wednesday", 5: "Thursday", 6: "Friday", 7: "Saturday"
+    };
+
+    $("#txt_leave_name").val(data.NAME);
+    $("#txt_leave").val(data.LeaveGroupDesc);
+    $("#txt_shift").val(data.autoshift);
+    $("#txt_rotation").val(data.autoshifts);
+    $("#txt_weekly").val(daysOfWeek[data.woff] || "");
+    $("#txt_Shcode").val(data.SHCODE);
+}
+
+function populateLoanView(data) {
+    $("#txt_loan_name").val(data.NAME);
+    $(".txt_payScale").val(data.PAYSCALE);
+}
+
+function populateIncentiveView(data) {
+    $("#txt_incentive_name").val(data.NAME);
+    $("#txt_incentive_basic").val(data.BASIC);
+    $("#txt_incentive").val(data.incentive);
+    $("#txt_incrRemark").val(data.incr_remark);
+    $("#txt_basicIncr").val(data.basic_increment);
+    $("#txt_doi").val(data.incr_date);
+}
+
+function populateOtherView(data) {
+    $("#txt_other_name").val(data.NAME);
+    $("#txt_relation").val(data.relation);
+    $("#txt_gname").val(data.GNAME);
+    $("#txt_edu").val(data.qual);
+    $("#txt_subject").val(data.subTaught);
+    $("#txt_email").val(data.EMAIL);
+    $("#txt_uid").val(data.uuid);
+    $("#txt_uanNo").val(data.uanNo);
+    $("#txt_exper").val(data.EXP);
+}
+
 
 // ─────────────────────────────────────────────
 // URL & Cross-Tab Sync
@@ -2008,16 +2080,6 @@ function updateUrlWithEmpNo(empno) {
     }
 
     window.history.pushState({ path: newUrl }, "", newUrl);
-
-    // Refresh all tabs and DataTables for the newly active employee.
-    load_data_finance(empno);
-    load_data_leave(empno);
-    load_data_loan(empno);
-    load_data_incentive(empno);
-    load_data_other(empno);
-    loadLeaveDataTable(empno);
-    loadLoanDataTable(empno);
-    loadAllowanceDataTable(empno);
 }
 
 
@@ -2033,10 +2095,13 @@ function updateUrlWithEmpNo(empno) {
  */
 function loadLeaveDataTable(empno) {
     if (!empno) return;
+    if (leaveTableEmpno === empno && $.fn.DataTable.isDataTable('#leavetable')) return;
 
     if ($.fn.DataTable.isDataTable('#leavetable')) {
         $('#leavetable').DataTable().destroy();
     }
+
+    leaveTableEmpno = empno;
 
     $('#leavetable').DataTable({
         buttons    : ['copy', 'excel', 'pdf'],
@@ -2066,10 +2131,13 @@ function loadLeaveDataTable(empno) {
  */
 function loadLoanDataTable(empno) {
     if (!empno) return;
+    if (loanTableEmpno === empno && $.fn.DataTable.isDataTable('#loantable')) return;
 
     if ($.fn.DataTable.isDataTable('#loantable')) {
         $('#loantable').DataTable().destroy();
     }
+
+    loanTableEmpno = empno;
 
     $('#loantable').DataTable({
         buttons    : ['copy', 'excel', 'pdf'],
@@ -2097,10 +2165,13 @@ function loadLoanDataTable(empno) {
  */
 function loadAllowanceDataTable(empno) {
     if (!empno) return;
+    if (allowanceTableEmpno === empno && $.fn.DataTable.isDataTable('#allowtable')) return;
 
     if ($.fn.DataTable.isDataTable('#allowtable')) {
         $('#allowtable').DataTable().destroy();
     }
+
+    allowanceTableEmpno = empno;
 
     $('#allowtable').DataTable({
         buttons    : ['copy', 'excel', 'pdf'],
@@ -2307,7 +2378,7 @@ function showData(emp) {
  * @param {string|number} empno - Employee number.
  */
 function show_general_data(empno) {
-    // Switch modal to edit mode: hide Save, show Update.
+   
     $("#btn_general_save").hide();
     $("#btn_general_update").show();
 
@@ -2326,12 +2397,16 @@ function show_general_data(empno) {
             $(".txt_add1").val(data.loc);
             $(".txt_phone").val(data.PHONE);
             $(".txt_phone1").val(data.PHONE1);
+            $("input[name='txt_sex']").prop("checked", false);
+            $("input[name='txt_sex'][value='" + data.SEX + "']").prop("checked", true);
+            $("input[name='txt_Mar_stat']").prop("checked", false);
+            $("input[name='txt_Mar_stat'][value='" + data.mar_stat + "']").prop("checked", true);
             $(".txt_pan").val(data.PAN);
             $("#txt_Catcode").val(data.CATCODE);
             $(".txt_dob").val(data.DOB);
             $(".txt_doj").val(data.DOJ);
             $("#txt_Dsgcode").val(data.DSGCODE);
-            $("#txt_Dor").val(data.DOR);
+            $(".txt_dor").val(data.DOR);
             $("#txt_Doc").val(data.DOC);
             $(".txt_cardno").val(data.cardno);
             $("#txt_PHOTO").val(data.PHOTO); // Existing photo stored as base64.
@@ -2357,14 +2432,15 @@ function show_general_data(empno) {
             $("#txt_Doi").val(data.incr_date);
 
             // --- Other Modal ---
-            $("#txt_Relation").val(data.relation);
-            $("#txt_Gname").val(data.GNAME);
-            $("#txt_Edu").val(data.qual);
-            $("#txt_Subject").val(data.subTaught);
-            $("#txt_Email").val(data.EMAIL);
-            $("#txt_Uid").val(data.uuid);
-            $("#txt_UanNo").val(data.uanNo);
-            $("#txt_Exper").val(data.EXP);
+            $("#txt_Relation_modal").val(data.relation);
+            updateRelationLabel(data.relation);
+            $("#txt_Gname_modal").val(data.GNAME);
+            $("#txt_Edu_modal").val(data.qual);
+            $("#txt_Subject_modal").val(data.subTaught);
+            $("#txt_Email_modal").val(data.EMAIL);
+            $("#txt_Uid_modal").val(data.uuid);
+            $("#txt_UanNo_modal").val(data.uanNo);
+            $("#txt_Exper_modal").val(data.EXP);
         },
         error: function (xhr, textStatus, errorThrown) {
             console.error("show_general_data: " + errorThrown);

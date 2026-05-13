@@ -83,12 +83,12 @@ function getActivePage($apage, $bpage)
                             <div class="side-menu__title"> Designation Master</div>
                         </a>
                     </li>
-                    <li>
+                    <!-- <li>
                         <a href="index_company.php" class="side-menu <?php getActivePage($page, "company_master"); ?>">
                             <div class="side-menu__icon"> <i class="fa-solid fa-city"></i></div>
                             <div class="side-menu__title"> Company Master </div>
                         </a>
-                    </li>
+                    </li> -->
                     <!-- <li>
                         <a href="index_attendance.php" class="side-menu <?php getActivePage($page, "attd_machine"); ?>">
                             <div class="side-menu__icon"> <i class="fa-solid fa-clipboard-user"></i></div>
@@ -107,16 +107,16 @@ function getActivePage($apage, $bpage)
                             <div class="side-menu__title">Leave Group Master </div>
                         </a>
                     </li>
-                    <li>
+                    <!-- <li>
                         <a href="index_shift.php" class="side-menu <?php getActivePage($page, "shift_master"); ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-person-booth"></i></div>
                             <div class="side-menu__title">Shift Master </div>
                         </a>
-                    </li>
+                    </li> -->
                     <li>
                         <a href="index_allowDeduct.php" class="side-menu <?php getActivePage($page, "arrear"); ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
-                            <div class="side-menu__title">Special Allowances/Deductions </div>
+                            <div class="side-menu__title">Individual Allowances/Deductions </div>
                         </a>
                     </li>
                     <li>

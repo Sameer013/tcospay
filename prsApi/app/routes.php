@@ -802,11 +802,32 @@ return function (App $app) {
             return preg_match('/^\d{4}-\d{2}-\d{2}$/', $val) ? $val : null;
         };
  
+        $empno = $nullIfEmpty($users['EmpNo'] ?? $users['txt_EmpNo'] ?? $args['EMPCODE'] ?? null);
+
+        if ($empno === null) {
+            throw new Exception("Employee number is required for update");
+        }
+
+        $currentStmt = $db->prepare("SELECT * FROM empmast WHERE EMPNO = :txt_empno");
+        $currentStmt->bindValue(':txt_empno', $empno, PDO::PARAM_INT);
+        $currentStmt->execute();
+        $currentRow = $currentStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$currentRow) {
+            throw new Exception("Employee not found for update");
+        }
+
+        $pickValue = function ($inputKey, $columnName) use ($users, $currentRow) {
+            return array_key_exists($inputKey, $users) ? $users[$inputKey] : ($currentRow[$columnName] ?? null);
+        };
+
         // ─────────────────────────────────────────────
         // Photo: strip base64 header and decode to binary
         // ─────────────────────────────────────────────
-        $photoData = $users['PHOTO'] ?? $users['txt_PHOTO'] ?? null;
-        if (!empty($photoData) && strpos($photoData, 'data:image') === 0) {
+        $photoData = array_key_exists('PHOTO', $users)
+            ? $users['PHOTO']
+            : (array_key_exists('txt_PHOTO', $users) ? $users['txt_PHOTO'] : ($currentRow['PHOTO'] ?? null));
+        if (!empty($photoData) && is_string($photoData) && strpos($photoData, 'data:image') === 0) {
             $photoData = base64_decode(
                 preg_replace('#^data:image/\w+;base64,#i', '', $photoData)
             );
@@ -817,50 +838,45 @@ return function (App $app) {
         // ─────────────────────────────────────────────
  
         // Text fields — NULL when empty rather than empty string
-        $name        = $nullIfEmpty($users['Name']      ?? null);
-        $compId      = $nullIfEmpty($users['Comp_id']   ?? null);
-        $state       = $nullIfEmpty($users['State']     ?? null);
-        $address     = $nullIfEmpty($users['Address']   ?? null);
-        $add1        = $nullIfEmpty($users['Add1']      ?? null);
-        $phone       = $nullIfEmpty($users['Phone']     ?? null);
-        $phone1      = $nullIfEmpty($users['Phone1']    ?? null);
-        $sex         = $nullIfEmpty($users['sex']       ?? null);
-        $marStat     = $nullIfEmpty($users['Mar_stat']  ?? null);
-        $pan         = $nullIfEmpty($users['Pan']       ?? null);
-        $catcode     = $nullIfEmpty($users['Catcode']   ?? null);
-        $dsgcode     = $nullIfEmpty($users['Dsgcode']   ?? null);
-        $cardno      = $nullIfEmpty($users['Cardno']    ?? null);
-        $accNo       = $nullIfEmpty($users['AccNo']     ?? null);
-        $pfacno      = $nullIfEmpty($users['Pf']        ?? null);
-        $incrRemark  = $nullIfEmpty($users['IncrRemark'] ?? null);
-        $relation    = $nullIfEmpty($users['Relation']  ?? null);
-        $gname       = $nullIfEmpty($users['Gname']     ?? null);
-        $edu         = $nullIfEmpty($users['Edu']       ?? null);
-        $subject     = $nullIfEmpty($users['Subject']   ?? null);
-        $email       = $nullIfEmpty($users['Email']     ?? null);
-        $uid         = $nullIfEmpty($users['Uid']       ?? null);
-        $uanNo       = $nullIfEmpty($users['UanNo']     ?? null);
-        $exper       = $nullIfEmpty($users['Exper']     ?? null);
-        $shcode      = $nullIfEmpty($users['Shcode']    ?? null);
-        $empno       = $nullIfEmpty($users['EmpNo']     ?? $users['txt_EmpNo'] ?? $args['EMPCODE'] ?? null);
+        $name        = $nullIfEmpty($pickValue('Name', 'NAME'));
+        $compId      = $nullIfEmpty($pickValue('Comp_id', 'comp_id'));
+        $state       = $nullIfEmpty($pickValue('State', 'STATE'));
+        $address     = $nullIfEmpty($pickValue('Address', 'ADDRESS'));
+        $add1        = $nullIfEmpty($pickValue('Add1', 'ADDRESS1'));
+        $phone       = $nullIfEmpty($pickValue('Phone', 'PHONE'));
+        $phone1      = $nullIfEmpty($pickValue('Phone1', 'PHONE1'));
+        $sex         = $nullIfEmpty($pickValue('sex', 'SEX'));
+        $marStat     = $nullIfEmpty($pickValue('Mar_stat', 'mar_stat'));
+        $pan         = $nullIfEmpty($pickValue('Pan', 'PAN'));
+        $catcode     = $nullIfEmpty($pickValue('Catcode', 'CATCODE'));
+        $dsgcode     = $nullIfEmpty($pickValue('Dsgcode', 'DSGCODE'));
+        $cardno      = $nullIfEmpty($pickValue('Cardno', 'cardno'));
+        $accNo       = $nullIfEmpty($pickValue('AccNo', 'ACCNO'));
+        $pfacno      = $nullIfEmpty($pickValue('Pf', 'PFACNO'));
+        $incrRemark  = $nullIfEmpty($pickValue('IncrRemark', 'incr_remark'));
+        $relation    = $nullIfEmpty($pickValue('Relation', 'relation'));
+        $gname       = $nullIfEmpty($pickValue('Gname', 'GNAME'));
+        $edu         = $nullIfEmpty($pickValue('Edu', 'qual'));
+        $subject     = $nullIfEmpty($pickValue('Subject', 'subTaught'));
+        $email       = $nullIfEmpty($pickValue('Email', 'EMAIL'));
+        $uid         = $nullIfEmpty($pickValue('Uid', 'uuid'));
+        $uanNo       = $nullIfEmpty($pickValue('UanNo', 'uanNo'));
+        $exper       = $nullIfEmpty($pickValue('Exper', 'EXP'));
+        $shcode      = $nullIfEmpty($pickValue('Shcode', 'SHCODE'));
  
         // Numeric/DECIMAL fields — NULL when empty to avoid SQLSTATE 1366
-        $bank        = $nullIfEmpty($users['Bank']         ?? null); // FK — keep as-is (int or null)
-        $basic       = $decimalOrNull($users['Basic']      ?? null);
-        $payScale    = $decimalOrNull($users['PayScale']   ?? null);
-        $incentive   = $decimalOrNull($users['Incentive']  ?? null);
-        $basicIncr   = $decimalOrNull($users['BasicIncr']  ?? null);
+        $bank        = $nullIfEmpty($pickValue('Bank', 'BID')); // FK — keep as-is (int or null)
+        $basic       = $decimalOrNull($pickValue('Basic', 'BASIC'));
+        $payScale    = $decimalOrNull($pickValue('PayScale', 'PAYSCALE'));
+        $incentive   = $decimalOrNull($pickValue('Incentive', 'incentive'));
+        $basicIncr   = $decimalOrNull($pickValue('BasicIncr', 'basic_increment'));
  
         // DATE fields — NULL when empty to avoid invalid date errors
-        $dob         = $dateOrNull($users['Dob'] ?? null);
-        $doj         = $dateOrNull($users['Doj'] ?? null);
-        $dor         = $dateOrNull($users['Dor'] ?? null);
-        $doc         = $dateOrNull($users['Doc'] ?? null);
-        $doi         = $dateOrNull($users['Doi'] ?? null);
-
-        if ($empno === null) {
-            throw new Exception("Employee number is required for update");
-        }
+        $dob         = $dateOrNull($pickValue('Dob', 'DOB'));
+        $doj         = $dateOrNull($pickValue('Doj', 'DOJ'));
+        $dor         = $dateOrNull($pickValue('Dor', 'DOR'));
+        $doc         = $dateOrNull($pickValue('Doc', 'DOC'));
+        $doi         = $dateOrNull($pickValue('Doi', 'incr_date'));
  
         // ─────────────────────────────────────────────
         // Build & Execute Query
