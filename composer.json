@@ -1,0 +1,6 @@
+{
+    "require": {
+        "slim/slim": "^4.14",
+        "phpoffice/phpspreadsheet": "^3.6"
+    }
+}
