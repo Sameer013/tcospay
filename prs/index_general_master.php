@@ -1852,6 +1852,43 @@ function closeModal(modalSelector) {
     $(modalSelector).find("[data-tw-dismiss='modal']").first().trigger("click");
 }
 
+function syncEmployeeSearchOption(data) {
+    const select = document.getElementById('empname');
+    if (!select || select.tagName !== 'SELECT' || !data || !data.EMPNO) return;
+
+    const empno = String(data.EMPNO);
+    const label = empno + ' - ' + (data.NAME || '');
+    const employeeIndex = employeeNumbers.map(String).indexOf(empno);
+
+    if (employeeIndex === -1) {
+        employeeNumbers.push(data.EMPNO);
+        currentIndex = employeeNumbers.length - 1;
+    } else {
+        currentIndex = employeeIndex;
+    }
+
+    if (select.tomselect) {
+        if (select.tomselect.options[empno]) {
+            select.tomselect.updateOption(empno, { value: empno, text: label });
+        } else {
+            select.tomselect.addOption({ value: empno, text: label });
+        }
+        select.tomselect.setValue(empno, true);
+        select.tomselect.refreshOptions(false);
+    } else {
+        let option = Array.from(select.options).find(item => item.value === empno);
+        if (!option) {
+            option = new Option(label, empno);
+            select.add(option);
+        } else {
+            option.text = label;
+        }
+        select.value = empno;
+    }
+
+    updateButtonStatus();
+}
+
 $(document).ready(function () {
     // Load the employee indicated by the URL ?empno= param, or index 0 if none.
     load_data_general(currentIndex, getParameterByName('empno'));
@@ -1906,6 +1943,7 @@ function loadEmployeeBundle(empno) {
 
             currentEmployeeData = data;
             currentEmployeeNo = data.EMPNO;
+            syncEmployeeSearchOption(data);
             updateEmployeeInformation(data);
             updateLeaveSummary(data);
             updateUrlWithEmpNo(data.EMPNO);
@@ -2731,7 +2769,7 @@ $(".btn_update").on("click", async function (event) {
  * and the total number of employees loaded from PHP.
  */
 function updateButtonStatus() {
-    const totalItems = <?php echo count($empnames); ?>;
+    const totalItems = employeeNumbers.length;
     $(".prevBtn").prop("disabled", currentIndex === 0);
     $(".nextBtn").prop("disabled", currentIndex === totalItems - 1);
 }
