@@ -107,12 +107,100 @@ label {
     transform: translate(-50%, -50%);
     color: #fff;
 }
+
+.app-loader-overlay {
+    align-items: center;
+    background: rgba(248, 250, 252, 0.82);
+    backdrop-filter: blur(3px);
+    display: none;
+    inset: 0;
+    justify-content: center;
+    position: fixed;
+    z-index: 9999;
+}
+
+.app-loader-overlay.is-active {
+    display: flex;
+}
+
+.loader-panel {
+    align-items: center;
+    background: #fff;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 8px;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
+    color: #1e293b;
+    display: flex;
+    gap: 12px;
+    min-width: 230px;
+    padding: 16px 18px;
+}
+
+.loader-spinner {
+    animation: loader-spin 0.8s linear infinite;
+    border: 3px solid #dbeafe;
+    border-top-color: #2563eb;
+    border-radius: 999px;
+    height: 32px;
+    width: 32px;
+}
+
+.loader-title {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.loader-subtitle {
+    color: #64748b;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.modal-content {
+    position: relative;
+}
+
+.modal-loader-overlay {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.78);
+    border-radius: 8px;
+    display: none;
+    inset: 0;
+    justify-content: center;
+    position: absolute;
+    z-index: 20;
+}
+
+.modal-content.is-loading .modal-loader-overlay {
+    display: flex;
+}
+
+.modal-content.is-loading .modal-body,
+.modal-content.is-loading .modal-footer {
+    pointer-events: none;
+}
+
+@keyframes loader-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
 </style>
 
 
 <!-- END: Head -->
 
 <body class="py-0">
+    <div id="pageLoader" class="app-loader-overlay" role="status" aria-live="polite" aria-hidden="true">
+        <div class="loader-panel">
+            <div class="loader-spinner"></div>
+            <div>
+                <div id="pageLoaderTitle" class="loader-title">Loading employee data</div>
+                <div id="pageLoaderSubtitle" class="loader-subtitle">Please wait...</div>
+            </div>
+        </div>
+    </div>
     <!-- BEGIN: Mobile Menu -->
     <?php include 'mob.php' ?>
     <!-- END: Mobile Menu -->
@@ -344,7 +432,7 @@ label {
                                             ?>
                                             <button type="button" name="next"
                                                 class="btn mx-4 btn-primary rounded-full w-20"
-                                                onclick="showData(getParameterByName('empno'))" data-tw-toggle="modal"
+                                                onclick="showData(getParameterByName('empno'), '#header-footer-modal-preview-general-view')" data-tw-toggle="modal"
                                                 data-tw-target="#header-footer-modal-preview-general-view">Edit</button>
                                             <?php
                                                 if ($_SESSION['user'] == 'Admin') {
@@ -465,7 +553,7 @@ label {
                                         class="prevBtn btn btn-outline-primary rounded-full w-20">Prev</button>
 
                                     <button type="button" name="next" class="btn btn-primary rounded-full w-20"
-                                        onclick="showData(getParameterByName('empno'))" data-tw-toggle="modal"
+                                        onclick="showData(getParameterByName('empno'), '#header-footer-modal-preview-finance-view')" data-tw-toggle="modal"
                                         data-tw-target="#header-footer-modal-preview-finance-view">Edit</button>
 
                                     <button type="button"
@@ -580,7 +668,7 @@ label {
 
                                             <button type="button" name="next"
                                                 class="btn mx-4 btn-primary rounded-full w-20"
-                                                onclick="showData(getParameterByName('empno'))" data-tw-toggle="modal"
+                                                onclick="showData(getParameterByName('empno'), '#header-footer-modal-preview-leave-view')" data-tw-toggle="modal"
                                                 data-tw-target="#header-footer-modal-preview-leave-view">Edit</button>
 
 
@@ -644,7 +732,7 @@ label {
 
                                             <!-- <button type="button" name="next"
                                                 class="btn mx-4 btn-primary rounded-full w-20"
-                                                onclick="showData(getParameterByName('empno'))" data-tw-toggle="modal"
+                                                onclick="showData(getParameterByName('empno'), '#header-footer-modal-preview-loan-view')" data-tw-toggle="modal"
                                                 data-tw-target="#header-footer-modal-preview-loan-view">Edit</button> -->
 
                                             <button type="button"
@@ -714,7 +802,7 @@ label {
 
 
                                     <button type="button" name="next" class="btn btn-primary rounded-full w-20"
-                                        onclick="showData(getParameterByName('empno'))" data-tw-toggle="modal"
+                                        onclick="showData(getParameterByName('empno'), '#header-footer-modal-preview-incentive-view')" data-tw-toggle="modal"
                                         data-tw-target="#header-footer-modal-preview-incentive-view">Edit</button>
 
                                     <button type="button"
@@ -798,7 +886,7 @@ label {
                                     <?php endif; ?>
 
                                     <button type="button" name="next" class="btn btn-primary rounded-full w-20"
-                                        onclick="showData(getParameterByName('empno'))" data-tw-toggle="modal"
+                                        onclick="showData(getParameterByName('empno'), '#header-footer-modal-preview-other-view')" data-tw-toggle="modal"
                                         data-tw-target="#header-footer-modal-preview-other-view">Edit</button>
 
                                     <?php if ($_SESSION['user'] == 'Admin'): ?>
@@ -1699,11 +1787,76 @@ let currentEmployeeNo = null;
 let leaveTableEmpno = null;
 let loanTableEmpno = null;
 let allowanceTableEmpno = null;
+let pageLoaderCount = 0;
+let modalLoaderCount = 0;
+
+function showPageLoader(title, subtitle) {
+    pageLoaderCount++;
+    $("#pageLoaderTitle").text(title || "Loading employee data");
+    $("#pageLoaderSubtitle").text(subtitle || "Please wait...");
+    $("#pageLoader").addClass("is-active").attr("aria-hidden", "false");
+}
+
+function hidePageLoader() {
+    pageLoaderCount = Math.max(0, pageLoaderCount - 1);
+    if (pageLoaderCount === 0) {
+        $("#pageLoader").removeClass("is-active").attr("aria-hidden", "true");
+    }
+}
+
+function ensureModalLoader(modalSelector) {
+    const modalContent = $(modalSelector).find(".modal-content");
+    if (!modalContent.find(".modal-loader-overlay").length) {
+        modalContent.append(
+            '<div class="modal-loader-overlay" role="status" aria-live="polite">' +
+                '<div class="loader-panel">' +
+                    '<div class="loader-spinner"></div>' +
+                    '<div>' +
+                        '<div class="loader-title modal-loader-title">Loading details</div>' +
+                        '<div class="loader-subtitle">Please wait...</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>'
+        );
+    }
+    return modalContent;
+}
+
+function showModalLoader(modalSelector, title) {
+    modalLoaderCount++;
+    const modalContent = ensureModalLoader(modalSelector);
+    modalContent.find(".modal-loader-title").text(title || "Loading details");
+    modalContent.addClass("is-loading");
+}
+
+function hideModalLoader(modalSelector) {
+    modalLoaderCount = Math.max(0, modalLoaderCount - 1);
+    if (modalLoaderCount === 0) {
+        $(modalSelector).find(".modal-content").removeClass("is-loading");
+    }
+}
+
+function setActionLoading(button, isLoading, text) {
+    const $button = $(button);
+    if (!$button.length) return;
+
+    if (isLoading) {
+        $button.data("original-text", $button.text());
+        $button.prop("disabled", true).text(text || "Please wait...");
+    } else {
+        $button.prop("disabled", false).text($button.data("original-text") || $button.text());
+    }
+}
+
+function closeModal(modalSelector) {
+    $(modalSelector).find("[data-tw-dismiss='modal']").first().trigger("click");
+}
 
 $(document).ready(function () {
     // Load the employee indicated by the URL ?empno= param, or index 0 if none.
     load_data_general(currentIndex, getParameterByName('empno'));
     updateButtonStatus();
+    $("#btn_general_save, .btn_update").removeAttr("data-tw-dismiss");
     $('#txt_Relation_modal').on('change', function () {
         updateRelationLabel($(this).val());
     });
@@ -1745,6 +1898,9 @@ function loadEmployeeBundle(empno) {
     $.ajax({
         url    : '../prsApi/empmast/' + empno,
         method : "GET",
+        beforeSend: function () {
+            showPageLoader("Loading employee data", "Fetching the latest details...");
+        },
         success: function (data) {
             if (!data) return;
 
@@ -1762,6 +1918,10 @@ function loadEmployeeBundle(empno) {
         },
         error: function (xhr, textStatus, errorThrown) {
             console.error("loadEmployeeBundle: " + errorThrown);
+            alert("Unable to load employee data. Please try again.");
+        },
+        complete: function () {
+            hidePageLoader();
         }
     });
 }
@@ -1820,9 +1980,15 @@ function add_new() {
     $("#btn_general_save").show();
     $("#img").show();
     $("#btn_general_update").hide();
-    $('#frm_user1').trigger("reset");
+    $('#general_form')[0].reset();
+    $('#general_form').find('input[type="hidden"]').val('');
+    $('#general_form').find('input[type="radio"], input[type="checkbox"]').prop('checked', false);
+    $("#txt_PHOTO, #selectedImageData").val('');
+    $("#results").empty();
+    $("#txt_image").val('');
     $('#frm_user_select').trigger("reset");
     $('#frm_user_camera').trigger("reset");
+    resetwebcam();
 }
 
 
@@ -1883,8 +2049,11 @@ function readImageFile(selectedImage) {
 $("#btn_general_save").on("click", async function (event) {
     event.preventDefault();
     saveAndTurnOffCamera();
+    const saveButton = this;
+    showModalLoader("#header-footer-modal-preview-general-view", "Saving employee");
+    setActionLoading(saveButton, true, "Saving...");
 
-    const form     = $("#frm_user1")[0];
+    const form     = $("#general_form")[0];
     const formData = new FormData(form);
 
     try {
@@ -1912,11 +2081,15 @@ $("#btn_general_save").on("click", async function (event) {
         console.log("Save response:", response);
 
         if (response.status === "Ok") {
-            $("#header-footer-modal-preview").hide();
+            closeModal("#header-footer-modal-preview-general-view");
             loadLastEmpNo(); // Navigate to the newly created employee.
         }
     } catch (error) {
         console.error("Error processing image:", error);
+        alert("Unable to save employee. Please try again.");
+    } finally {
+        setActionLoading(saveButton, false);
+        hideModalLoader("#header-footer-modal-preview-general-view");
     }
 });
 
@@ -2348,10 +2521,20 @@ function loadLastEmpNo() {
         url     : '../prsApi/getLastEmpNo',
         type    : 'GET',
         dataType: 'json',
+        beforeSend: function () {
+            showPageLoader("Loading new employee", "Refreshing the screen...");
+        },
         success : function (data) {
             var lastEmpNo = data.last_emp_no;
             console.log("Last Emp No:", lastEmpNo);
             load_data_general(currentIndex, lastEmpNo);
+        },
+        error: function (xhr, textStatus, errorThrown) {
+            console.error("loadLastEmpNo: " + errorThrown);
+            alert("Employee saved, but the latest employee could not be loaded automatically.");
+        },
+        complete: function () {
+            hidePageLoader();
         }
     });
 }
@@ -2367,8 +2550,8 @@ function loadLastEmpNo() {
  *
  * @param {string|number} emp - Employee number to load into the modal.
  */
-function showData(emp) {
-    show_general_data(emp);
+function showData(emp, modalSelector) {
+    show_general_data(emp || currentEmployeeNo, modalSelector || "#header-footer-modal-preview-general-view");
 }
 
 /**
@@ -2377,14 +2560,22 @@ function showData(emp) {
  *
  * @param {string|number} empno - Employee number.
  */
-function show_general_data(empno) {
+function show_general_data(empno, modalSelector) {
    
     $("#btn_general_save").hide();
     $("#btn_general_update").show();
+    modalSelector = modalSelector || "#header-footer-modal-preview-general-view";
+    if (!empno) {
+        alert("Please select an employee first.");
+        return;
+    }
 
     $.ajax({
         url    : '../prsApi/empmast/' + empno,
         method : "GET",
+        beforeSend: function () {
+            showModalLoader(modalSelector, "Loading employee details");
+        },
         success: function (data) {
 
             // --- General Modal ---
@@ -2444,6 +2635,10 @@ function show_general_data(empno) {
         },
         error: function (xhr, textStatus, errorThrown) {
             console.error("show_general_data: " + errorThrown);
+            alert("Unable to load employee details for editing. Please try again.");
+        },
+        complete: function () {
+            hideModalLoader(modalSelector);
         }
     });
 }
@@ -2461,8 +2656,10 @@ function show_general_data(empno) {
  * - PUTs the payload to the API.
  */
 $(".btn_update").on("click", async function (event) {
+    event.preventDefault();
     saveAndTurnOffCamera();
 
+    const updateButton = this;
     const form  = $(this).closest(".modal-content").find("form.frm_user");
     let   json  = convertFormToJSON(form);
     const empno = form.find(".txt_EmpNo, .empno").val()
@@ -2474,15 +2671,28 @@ $(".btn_update").on("click", async function (event) {
         return;
     }
 
+    const modalId = $(updateButton).closest(".modal").attr("id");
+    const modalSelector = modalId ? "#" + modalId : "#header-footer-modal-preview-general-view";
+    showModalLoader(modalSelector, "Updating employee");
+    setActionLoading(updateButton, true, "Updating...");
+
     json.EmpNo = empno;
 
     // Attach photo: prefer file upload, fall back to webcam snapshot.
     const selectedImage = $("#txt_image")[0].files[0];
-    if (selectedImage) {
-        json.txt_PHOTO = await readImageFile(selectedImage);
-    } else {
-        const webcamData = $("#selectedImageData").val();
-        if (webcamData) json.txt_PHOTO = webcamData;
+    try {
+        if (selectedImage) {
+            json.txt_PHOTO = await readImageFile(selectedImage);
+        } else {
+            const webcamData = $("#selectedImageData").val();
+            if (webcamData) json.txt_PHOTO = webcamData;
+        }
+    } catch (error) {
+        console.error("Unable to read selected image:", error);
+        alert("Unable to process selected image. Please try again.");
+        setActionLoading(updateButton, false);
+        hideModalLoader(modalSelector);
+        return;
     }
 
     console.log("Update for EMPNO:", empno);
@@ -2496,12 +2706,17 @@ $(".btn_update").on("click", async function (event) {
         success: function (data) {
             alert(data.msg);
             if (data.status === "Ok") {
-                $("#header-footer-modal-preview").hide();
+                closeModal(modalSelector);
                 load_updated_data(empno); // Refresh view with updated data.
             }
         },
         error: function (xhr, textStatus, errorThrown) {
             console.error("Update failed: " + errorThrown);
+            alert("Unable to update employee. Please try again.");
+        },
+        complete: function () {
+            setActionLoading(updateButton, false);
+            hideModalLoader(modalSelector);
         }
     });
 });
