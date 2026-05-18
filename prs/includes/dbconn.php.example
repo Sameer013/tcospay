@@ -1,0 +1,17 @@
+<?php
+
+// Change this to your actual database connection details, also remove .example from the filename when you save it.
+$host = "localhost";
+$port = "3306";
+$database = "dbname";
+$username = "dbusername";
+$password = "dbpassword";
+
+$dsn = 'mysql:host=' . $host . ';port=' . $port . ';dbname=' . $database;
+
+try {
+    $db = new PDO($dsn, $username, $password);
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    echo 'Connection failed: ' . $e->getMessage();
+}

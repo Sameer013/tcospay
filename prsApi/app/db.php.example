@@ -1,0 +1,46 @@
+<?php
+// Change this to your actual database connection details, also remove .example from the filename when you save it.
+$server = 'localhost';
+$port = '3306';
+$user = 'dbusername';
+$pass = 'dbpassword';
+$database = 'dbname';
+
+function connect_db()
+{
+	$connection = new mysqli(
+		$GLOBALS['server'],
+		$GLOBALS['user'],
+		$GLOBALS['pass'],
+		$GLOBALS['database'],
+		$GLOBALS['port']
+	);
+
+	if ($connection->connect_error) {
+		die("Connection failed: " . $connection->connect_error);
+	}
+
+	return $connection;
+}
+
+function getconn()
+{
+	$server = $GLOBALS['server'];
+	$port = $GLOBALS['port'];
+	$user = $GLOBALS['user'];
+	$pass = $GLOBALS['pass'];
+	$database = $GLOBALS['database'];
+
+	try {
+		$conn = new PDO(
+			"mysql:host=$server;port=$port;dbname=$database",
+			$user,
+			$pass,
+			array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)
+		);
+	} catch (PDOException $e) {
+		echo 'Connection failed: ' . $e->getMessage();
+	}
+
+	return $conn;
+}
