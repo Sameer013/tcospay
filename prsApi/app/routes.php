@@ -675,7 +675,7 @@ return function (App $app) {
         $add1     = $nullIfEmpty($data['txt_Add1'] ?? null);
         $phone    = $nullIfEmpty($data['txt_Phone'] ?? null);
         $phone1   = $nullIfEmpty($data['txt_Phone1'] ?? null);
-        $sex      = $nullIfEmpty($data['txt_Sex'] ?? null);
+        $sex      = $nullIfEmpty($data['txt_Sex'] ?? $data['txt_sex'] ?? null); // handle case sensitive keys from add and update forms
         $marStat  = $nullIfEmpty($data['txt_Mar_stat'] ?? null);
         $pan      = $nullIfEmpty($data['txt_Pan'] ?? null);
         $catcode  = $nullIfEmpty($data['txt_Catcode'] ?? null);
@@ -684,7 +684,7 @@ return function (App $app) {
 
         $dob      = $dateOrNull($data['txt_Dob'] ?? null);
         $doj      = $dateOrNull($data['txt_Doj'] ?? null);
-        $dor      = $dateOrNull($data['txt_Dor'] ?? null);
+        $dor      = $dateOrNull($data['txt_Dor'] ?? $data['txt_dor'] ?? null); // handle case sensitive keys from add and update forms
         $doc      = $dateOrNull($data['txt_Doc'] ?? null);
 
         // ─────────────────────────────────────────────
@@ -817,8 +817,14 @@ return function (App $app) {
             throw new Exception("Employee not found for update");
         }
 
-        $pickValue = function ($inputKey, $columnName) use ($users, $currentRow) {
-            return array_key_exists($inputKey, $users) ? $users[$inputKey] : ($currentRow[$columnName] ?? null);
+        $pickValue = function ($inputKeys, $columnName) use ($users, $currentRow) {
+            foreach ((array) $inputKeys as $inputKey) {
+                if (array_key_exists($inputKey, $users)) {
+                    return $users[$inputKey];
+                }
+            }
+
+            return $currentRow[$columnName] ?? null;
         };
 
         // ─────────────────────────────────────────────
@@ -845,7 +851,7 @@ return function (App $app) {
         $add1        = $nullIfEmpty($pickValue('Add1', 'ADDRESS1'));
         $phone       = $nullIfEmpty($pickValue('Phone', 'PHONE'));
         $phone1      = $nullIfEmpty($pickValue('Phone1', 'PHONE1'));
-        $sex         = $nullIfEmpty($pickValue('sex', 'SEX'));
+        $sex         = $nullIfEmpty($pickValue(['sex', 'Sex'], 'SEX'));
         $marStat     = $nullIfEmpty($pickValue('Mar_stat', 'mar_stat'));
         $pan         = $nullIfEmpty($pickValue('Pan', 'PAN'));
         $catcode     = $nullIfEmpty($pickValue('Catcode', 'CATCODE'));
@@ -874,7 +880,7 @@ return function (App $app) {
         // DATE fields — NULL when empty to avoid invalid date errors
         $dob         = $dateOrNull($pickValue('Dob', 'DOB'));
         $doj         = $dateOrNull($pickValue('Doj', 'DOJ'));
-        $dor         = $dateOrNull($pickValue('Dor', 'DOR'));
+        $dor         = $dateOrNull($pickValue(['Dor', 'dor'], 'DOR'));
         $doc         = $dateOrNull($pickValue('Doc', 'DOC'));
         $doi         = $dateOrNull($pickValue('Doi', 'incr_date'));
  
