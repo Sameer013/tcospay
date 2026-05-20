@@ -1382,29 +1382,36 @@ return function (App $app) {
 					$jsonBody = json_decode($rawBody, true);
 					$users = is_array($jsonBody) ? $jsonBody : [];
 				}
-				$sql = "INSERT INTO indall(EMPNO, DESCR, PRCAMTFLAG, ALLREDNFLAG, ALLOWANCE, ALLREDNCONTINUITY)
-            VALUES(:txt_code, :txt_desc, :txt_flag, :txt_allow, :txt_value, :txt_stillvalid)";
+
 				$db = getconn();
+
+				// Fetch numeric code from indallmast using the DESCR text
+				$lookupStmt = $db->prepare("SELECT id FROM indallmast WHERE code = :code");
+				$lookupStmt->execute([':code' => $users['desc']]);
+				$codeId = $lookupStmt->fetchColumn();
+
+				$sql = "INSERT INTO indall(EMPNO, CODE, DESCR, PRCAMTFLAG, ALLREDNFLAG, ALLOWANCE, ALLREDNCONTINUITY)
+						VALUES(:empno, :code, :descr, :flag, :allow, :value, :stillvalid)";
+
 				$stmt = $db->prepare($sql);
-				$stmt->bindParam(":txt_code", $users['empname']);
-				$stmt->bindParam(":txt_desc", $users['desc']);
-				$stmt->bindParam(":txt_flag", $users['flag']);
-				$stmt->bindParam(":txt_allow", $users['allow']);
-				$stmt->bindParam(":txt_value", $users['value']);
-				$stmt->bindParam(":txt_stillvalid", $users['stillvalid']);
+				$stmt->bindParam(":empno",      $users['empname']);
+				$stmt->bindParam(":code", $codeId);   // id
+				$stmt->bindParam(":descr", $users['desc']);             // 
+				$stmt->bindParam(":flag",       $users['flag']);
+				$stmt->bindParam(":allow",      $users['allow']);
+				$stmt->bindParam(":value",      $users['value']);
+				$stmt->bindParam(":stillvalid", $users['stillvalid']);
 				$stmt->execute();
-				if ($stmt->rowCount() > 0)
-					$msg = "success";
-				else
-					$msg = "no update";
-				$db = null;
+
+				$data = array("status" => "Ok", "msg" => "Inserted successfully", "item" => $users);
 				$status = 201;
-				//$data=array("item"=>$users);
-				$data = array("status" => "Ok", "msg" => "Inserted sucessfully", "item" => $users);
+				$db = null;
+
 			} catch (Exception $e) {
 				$data = array("status" => "Error", "msg" => $e->getMessage());
 				$status = 200;
 			}
+
 			$response->getBody()->write(json_encode($data));
 			return $response
 				->withHeader('Content-Type', 'application/json')
