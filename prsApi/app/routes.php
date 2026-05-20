@@ -1201,6 +1201,121 @@ return function (App $app) {
 	});
 	//End of REST API for Global allowance entity
 
+	//Begin REST API for salary component master entity
+	$app->group("$burl/salaryComponent", function (Group $group) {
+		$group->get('', function (Request $request, Response $response, $args) {
+			try {
+				$db = getconn();
+				$result = $db->query("SELECT id, code, descr FROM indallmast ORDER BY descr");
+				$data = $result->fetchAll(PDO::FETCH_ASSOC);
+				$status = 200;
+			} catch (Exception $e) {
+				$data = array("errmsg" => $e->getMessage());
+				$status = 400;
+			}
+
+			$response->getBody()->write(json_encode($data));
+			return $response
+				->withHeader('Content-Type', 'application/json')
+				->withStatus($status);
+		});
+
+		$group->get('/{id}', function (Request $request, Response $response, $args) {
+			try {
+				$db = getconn();
+				$stmt = $db->prepare('SELECT id, code, descr FROM indallmast WHERE id = :id');
+				$stmt->bindValue(':id', $args['id'], PDO::PARAM_INT);
+				$stmt->execute();
+				$data = $stmt->fetch(PDO::FETCH_ASSOC);
+				$status = 200;
+			} catch (Exception $e) {
+				$data = array("errmsg" => $e->getMessage());
+				$status = 400;
+			}
+
+			$response->getBody()->write(json_encode($data));
+			return $response
+				->withHeader('Content-Type', 'application/json')
+				->withStatus($status);
+		});
+
+		$group->post('', function (Request $request, Response $response, $args) {
+			try {
+				$users = $request->getParsedBody();
+				if (!is_array($users)) {
+					$rawBody = (string) $request->getBody();
+					$jsonBody = json_decode($rawBody, true);
+					$users = is_array($jsonBody) ? $jsonBody : [];
+				}
+
+				$db = getconn();
+				$stmt = $db->prepare("INSERT INTO indallmast(code, descr) VALUES(:code, :descr)");
+				$stmt->bindParam(":code", $users['code']);
+				$stmt->bindParam(":descr", $users['descr']);
+				$stmt->execute();
+				$data = array("status" => "Ok", "msg" => "Inserted successfully", "item" => $users);
+				$status = 201;
+			} catch (Exception $e) {
+				$data = array("status" => "Error", "msg" => $e->getMessage());
+				$status = 200;
+			}
+
+			$response->getBody()->write(json_encode($data));
+			return $response
+				->withHeader('Content-Type', 'application/json')
+				->withStatus($status);
+		});
+
+		$group->put('/{id}', function (Request $request, Response $response, $args) {
+			try {
+				$users = $request->getParsedBody();
+				if (!is_array($users)) {
+					$rawBody = (string) $request->getBody();
+					$jsonBody = json_decode($rawBody, true);
+					$users = is_array($jsonBody) ? $jsonBody : [];
+				}
+
+				$db = getconn();
+				$stmt = $db->prepare("UPDATE indallmast SET code=:code, descr=:descr WHERE id=:id");
+				$stmt->bindParam(":id", $args['id']);
+				$stmt->bindParam(":code", $users['code']);
+				$stmt->bindParam(":descr", $users['descr']);
+				$stmt->execute();
+				$data = array("status" => "Ok", "msg" => "Updated successfully", "item" => $users);
+				$status = 201;
+			} catch (Exception $e) {
+				$data = array("status" => "Error", "msg" => $e->getMessage());
+				$status = 200;
+			}
+
+			$response->getBody()->write(json_encode($data));
+			return $response
+				->withHeader('Content-Type', 'application/json')
+				->withStatus($status);
+		});
+
+		$group->delete('/{id}', function (Request $request, Response $response, $args) {
+			try {
+				$db = getconn();
+				$stmt = $db->prepare("DELETE FROM indallmast WHERE id = :id");
+				$stmt->bindParam(":id", $args['id']);
+				$stmt->execute();
+				$msg = ($stmt->rowCount() > 0) ? "Deleted successfully" : "No deletion";
+				$data = array("status" => "Ok", "msg" => $msg);
+				$status = 201;
+			} catch (Exception $e) {
+				$data = array("status" => "Error", "msg" => $e->getMessage());
+				$status = 200;
+			}
+
+			$response->getBody()->write(json_encode($data));
+			return $response
+				->withHeader('Content-Type', 'application/json')
+				->withStatus($status);
+		});
+	});
+	//End of REST API for salary component master entity
+
 	//Begin REST API for individual allowance entity
 	$app->group("$burl/indAllow", function (Group $group) {
 		$group->get('', function (Request $request, Response $response, $args) {

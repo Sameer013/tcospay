@@ -5,6 +5,9 @@ if ((!isset($_SESSION['user']))) {
     die('Please Login First...<br><br>Redirectiing in a sec to Login Page');
 }
 require_once 'includes/dbconn.php';
+$componentStmt = $db->prepare("SELECT code, descr FROM indallmast ORDER BY code");
+$componentStmt->execute();
+$salaryComponents = $componentStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en" class="light">
@@ -17,7 +20,7 @@ require_once 'includes/dbconn.php';
     <meta name="description" content="Enigma admin is super flexible, powerful, clean & modern responsive tailwind admin template with unlimited possibilities.">
     <meta name="keywords" content="admin template, Enigma Admin Template, dashboard template, flat admin template, responsive admin template, web app">
     <meta name="author" content="LEFT4CODE">
-    <title>Payroll - Special Allowances/Deducations</title>
+    <title>Payroll - Special Allowances/Deductions</title>
     <!-- BEGIN: CSS Assets-->
     <link rel="stylesheet" href="dist/css/app.css" />
     <link rel="stylesheet" href="dist/css/sweetalert2.min.css" />
@@ -62,7 +65,7 @@ require_once 'includes/dbconn.php';
             ?>
             <div class="intro-y flex items-center mt-8">
                 <h2 class="text-lg font-medium mr-auto">
-                    Individual Allowances/Deducations
+                    Individual Allowances/Deductions
                 </h2>
             </div>
             <div class="grid grid-cols-12 gap-6 mt-5">
@@ -201,10 +204,12 @@ require_once 'includes/dbconn.php';
                                             <label for="txt_desc" class="form-label">Description</label>
                                             <div class="flex flex-col sm:flex-row mt-0 mb-2">
                                                 <select name="txt_desc" id="txt_desc" class="form-control w-full" style="height: 40px; padding: 10px;">
-                                                    <option value="" disabled selected>Select description</option>
-                                                    <option value="SPL">SPL</option>
-                                                    <option value="LSA">LSA</option>
-                                                    <option value="Other">Other</option>
+                                                    <option value="" disabled selected>Select component</option>
+                                                    <?php foreach ($salaryComponents as $component) : ?>
+                                                    <option value="<?= htmlspecialchars($component['code'], ENT_QUOTES, 'UTF-8') ?>">
+                                                        <?= htmlspecialchars($component['code'] . ' - ' . $component['descr'], ENT_QUOTES, 'UTF-8') ?>
+                                                    </option>
+                                                    <?php endforeach; ?>
                                                 </select>
                                             </div>
                                         </div>

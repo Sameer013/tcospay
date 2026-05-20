@@ -77,6 +77,12 @@ function getActivePage($apage, $bpage)
                             <div class="side-menu__title">Allowances/Deductions </div>
                         </a>
                     </li>
+                    <li>
+                        <a href="index_salary_component.php" class="side-menu <?php getActivePage($page, "salary_component"); ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
+                            <div class="side-menu__title">Salary Component</div>
+                        </a>
+                    </li>
                      <li>
                         <a href="index_allowDeduct.php" class="side-menu <?php getActivePage($page, "arrear"); ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
