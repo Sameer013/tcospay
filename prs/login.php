@@ -113,10 +113,10 @@ if (isset($_REQUEST['login'])){
             <div class="hidden xl:flex flex-col min-h-screen">
                 <div class="mt-8 mr-8">
                     <img alt="" class="-intro-x" style="width:35%; margin-top: 20%;  margin-left: 15%"
-                        src="dist/images/jpslogo.png">
+                        src="dist/images/tcoslogo.png">
                     <div class="-intro-x text-black font-medium text-5xl leading-tight"
                         style="margin-top:50px;color:white; text-shadow: 2px 2px black;">
-                        JPS Payroll System
+                        TCOS Payroll System
                     </div>
                 </div>
             </div>
@@ -129,7 +129,7 @@ if (isset($_REQUEST['login'])){
                     <div class="my-auto mx-auto xl:ml-20 bg-white dark:bg-darkmode-600 px-5 sm:px-8 py-8 xl:p-0 rounded-md shadow-md xl:shadow-none w-full sm:w-3/4 lg:w-2/4 xl:w-auto">
                         <div class="intro-x mt-1 py-5 flex items-center justify-center space-x-4 text-3xl font-bold leading-tight text-center rounded-t-full">
                             <div class="flex items-center justify-center xl:hidden">
-                            <img alt="JPS Logo" class="w-16 h-16 mx-2" src="dist/images/jpslogo.png" />
+                            <!-- <img alt="JPS Logo" class="w-16 h-16 mx-2" src="dist/images/jpslogo.png" /> -->
                             <span class="text-gray-600 text-xl font-semibold" style="text-shadow: 2px 2px white;">
                                 JPS Payroll System
                             </span>

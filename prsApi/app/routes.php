@@ -2050,7 +2050,7 @@ return function (App $app) {
 				$body = $request->getBody();
 				$db = getconn();
 				$users = $request->getParsedBody();
-				$sql = "UPDATE leavemst SET LeaveName=:txt_leaveCode, PaidLeave=:txt_paidLeave, Balance=:txt_balance WHERE LeaveCode=:txt_leaveCode";
+				$sql = "UPDATE leavemst SET LeaveName=:txt_leaveName, PaidLeave=:txt_paidLeave, Balance=:txt_balance WHERE LeaveCode=:txt_leaveCode";
 				$stmt = $db->prepare($sql);
 				$stmt->bindParam(":txt_leaveCode", $users['leaveCode']);
 				$stmt->bindParam(":txt_leaveName", $users['leaveName']);

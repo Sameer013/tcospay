@@ -178,9 +178,18 @@
                                                     <label for="txt_catgr" class="form-label">Catgegory</label>
                                                     <input id="txt_catgr" name="txt_catgr" type="text" class="form-control rounded" placeholder="Catgrory">
                                                 </div>
-                                                <div class="col-span-12 sm:col-span-6">
+                                                <!-- <div class="col-span-12 sm:col-span-6">
                                                     <label for="txt_disporder" class="form-label">Disporder</label>
                                                     <input id="txt_disporder" name="txt_disporder" type="text" class="form-control rounded" placeholder="Disporder">
+                                                </div> -->
+
+                                                <div class="col-span-12 sm:col-span-6">
+                                                    <label for="txt_disporder" class="form-label">Disporder</label>
+                                                    <!-- <input id="txt_disporder" name="txt_disporder" type="text" class="form-control rounded" placeholder="Disporder"> -->
+                                                    <select name="txt_disporder" id="txt_disporder" class="form-control rounded">
+                                                        <option value="1">Yes</option>
+                                                        <option value="0">No</option>
+                                                    </select>
                                                 </div>
                                             </div>
                                             <!-- END: Modal Body -->

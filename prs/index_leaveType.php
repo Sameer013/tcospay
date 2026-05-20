@@ -166,11 +166,19 @@
                                                 </div>
                                                 <div class="col-span-12 sm:col-span-6">
                                                     <label for="txt_paidLeave" class="form-label">Paid Leave</label>
-                                                    <input id="txt_paidLeave" name="txt_paidLeave" type="text" class="form-control rounded" placeholder="Paid Leave">
+                                                    <!-- <input id="txt_paidLeave" name="txt_paidLeave" type="text" class="form-control rounded" placeholder="Paid Leave"> -->
+                                                     <select name="txt_paidLeave" id="txt_paidLeave" class="form-control rounded">
+                                                        <option value="1">Yes</option>
+                                                        <option value="0">No</option>
+                                                    </select>
                                                 </div>
                                                 <div class="col-span-12 sm:col-span-6">
                                                     <label for="txt_balance" class="form-label">Balance</label>
-                                                    <input id="txt_balance" name="txt_balance" type="text" class="form-control rounded" placeholder="Balance">
+                                                    <!-- <input id="txt_balance" name="txt_balance" type="text" class="form-control rounded" placeholder="Balance"> -->
+                                                     <select name="txt_balance" id="txt_balance" class="form-control rounded">
+                                                        <option value="1">Yes</option>
+                                                        <option value="0">No</option>
+                                                    </select>
                                                 </div>
                                             </div>
                                             <!-- END: Modal Body -->
