@@ -106,7 +106,7 @@ if (isset($_REQUEST['login'])){
         }
     </style>
     <!-- END: Head -->
-    <body class="login absolute intro-x" style="background-image: url('dist/images/school3.jpg'); background-size: cover; background-position: center;">
+    <body class="login absolute intro-x" >
     <div class="container sm:px-10" >
         <div class="block xl:grid grid-cols-2 gap-4" >
             <!-- BEGIN: Login Info -->
