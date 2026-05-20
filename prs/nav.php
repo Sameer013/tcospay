@@ -77,6 +77,12 @@ function getActivePage($apage, $bpage)
                             <div class="side-menu__title">Allowances/Deductions </div>
                         </a>
                     </li>
+                     <li>
+                        <a href="index_allowDeduct.php" class="side-menu <?php getActivePage($page, "arrear"); ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
+                            <div class="side-menu__title">Individual Allowances/Deductions </div>
+                        </a>
+                    </li>
                     <li>
                         <a href="index_degination.php" class="side-menu <?php getActivePage($page, "designatopn"); ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-pen-nib"></i></div>
@@ -95,30 +101,25 @@ function getActivePage($apage, $bpage)
                             <div class="side-menu__title">Attendance Machine </div>
                         </a>
                     </li> -->
-                    <li>
+                    <!-- <li>
                         <a href="index_leaveType.php" class="side-menu <?php getActivePage($page, "lt_master"); ?>">
                             <div class="side-menu__icon"> <i class="fa-solid fa-person-walking-dashed-line-arrow-right"></i></div>
                             <div class="side-menu__title"> Leave Type Master </div>
                         </a>
-                    </li>
-                    <li>
+                    </li> -->
+                    <!-- <li>
                         <a href="index_leaveGroup.php" class="side-menu <?php getActivePage($page, "lg_master"); ?>">
                             <div class="side-menu__icon"> <i class="fa-solid fa-person-walking-arrow-right"></i></div>
                             <div class="side-menu__title">Leave Group Master </div>
                         </a>
-                    </li>
+                    </li> -->
                     <!-- <li>
                         <a href="index_shift.php" class="side-menu <?php getActivePage($page, "shift_master"); ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-person-booth"></i></div>
                             <div class="side-menu__title">Shift Master </div>
                         </a>
                     </li> -->
-                    <li>
-                        <a href="index_allowDeduct.php" class="side-menu <?php getActivePage($page, "arrear"); ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-wallet"></i></div>
-                            <div class="side-menu__title">Individual Allowances/Deductions </div>
-                        </a>
-                    </li>
+                   
                     <li>
                         <a href="index_bank.php" class="side-menu <?php getActivePage($page, "bank_master"); ?>">
                             <div class="side-menu__icon"> <i class="fa-solid fa-city"></i></div>

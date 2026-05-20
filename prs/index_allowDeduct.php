@@ -57,12 +57,12 @@ require_once 'includes/dbconn.php';
         <div class="content content--top-nav">
             <?php
             $menu_title = "General";
-            $currentPage = "Special Allowance";
+            $currentPage = " Individual Allowance";
             include 'top.php'
             ?>
             <div class="intro-y flex items-center mt-8">
                 <h2 class="text-lg font-medium mr-auto">
-                    Special Allowances/Deducations
+                    Individual Allowances/Deducations
                 </h2>
             </div>
             <div class="grid grid-cols-12 gap-6 mt-5">

@@ -353,11 +353,11 @@ label {
                                                 name="txt_state" placeholder="Enter Status" readonly>
                                         </div>
 
-                                        <div class="flex items-center">
+                                        <!-- <div class="flex items-center">
                                             <label for="txt_comp_id" class="w-1/3 font-medium">School:</label>
                                             <input type="text" class="input-box w-2/3" id="txt_comp_id"
                                                 name="txt_comp_id" placeholder="Enter School" readonly>
-                                        </div>
+                                        </div> -->
 
                                         <div class="flex items-center">
                                             <label for="txt_add1" class="w-1/3 font-medium">Location:</label>
@@ -508,7 +508,7 @@ label {
                                     </div>
 
                                     <!-- Arrear Section Label -->
-                                    <div class="col-span-full pt-3">
+                                    <!-- <div class="col-span-full pt-3">
                                         <h3 class="font-semibold text-lg mb-2">Arrear</h3>
                                         <hr>
                                     </div>
@@ -523,7 +523,7 @@ label {
                                         <label for="txt_nod" class="w-1/3">No of Days:</label>
                                         <input type="text" id="txt_nod" name="txt_nod" placeholder="Enter No. of Days"
                                             readonly class="p-2 w-2/3 bg-transparent">
-                                    </div>
+                                    </div> -->
 
                                 </div>
 
@@ -949,10 +949,10 @@ label {
                                                     name="txt_Name" id="txt_Name" placeholder="Enter Name"
                                                     oninput="this.value = this.value.replace(/[^a-zA-Z ]/g, '')" />
                                             </div>
-                                            <div class="col-span-12 sm:col-span-4">
-                                                <label class="form-label">School: *</label>
+                                            <!-- <div class="col-span-12 sm:col-span-4">
+                                                <label class="form-label">Company: *</label>
                                                 <select name="txt_Comp_id" id="txt_Comp_id" class="form-control border px-4 py-2 text-dark">
-                                                    <option value="" selected disabled>--Select School--</option>
+                                                    <option value="" selected disabled>--Select Company--</option>
                                                     <?php
                                                     require_once 'includes/dbconn.php';
                                                     $query = $db->query("SELECT comp_id, comp_name FROM compmast");
@@ -963,7 +963,7 @@ label {
                                                     }
                                                     ?>
                                                 </select>
-                                            </div>
+                                            </div> -->
                                             <div class="col-span-12 sm:col-span-4">
                                                 <label class="form-label " for="txt_State">Status :</label>
                                                 <select class="form-control  border px-4 py-2 text-dark" name="txt_State"
