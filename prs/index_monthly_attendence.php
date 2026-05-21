@@ -570,6 +570,41 @@ if ((!isset($_SESSION['user']))) {
         });
     }
 
+    function calculateModalDays() {
+        var cl = parseFloat($("#txt_cl").val()) || 0;
+        var el = parseFloat($("#txt_el").val()) || 0;
+        var lwop = parseFloat($("#txt_lwop").val()) || 0;
+        var off_days = parseFloat($("#txt_off_days").val()) || 0;
+        var med_leave = parseFloat($("#txt_med_leave").val()) || 0;
+        var hdays = parseFloat($("#txt_hdays").val()) || 0;
+        var wdays = parseFloat($("#txt_wdays").val()) || 0;
+        
+        // Days Worked (present) = Working Days - (CL + EL + LWOP + Sick Leaves)
+        var attnd = wdays - (cl + el + lwop + med_leave);
+        if (attnd < 0) attnd = 0;
+        $("#txt_attnd").val(attnd.toFixed(2));
+        
+        // Days Paid = Days Worked + CL + EL + Off Days + Holidays + (Sick Leaves / 2)
+        var dpaid = cl + off_days + (med_leave / 2) + attnd + hdays + el;
+        $("#txt_dpaid").val(dpaid.toFixed(2));
+        
+        // Absent = CL + EL + LWOP + Sick Leaves
+        var absent = cl + el + lwop + med_leave;
+        $("#txt_absent").val(absent.toFixed(2));
+    }
+
+    function calculateDaysPaidOnly() {
+        var cl = parseFloat($("#txt_cl").val()) || 0;
+        var el = parseFloat($("#txt_el").val()) || 0;
+        var off_days = parseFloat($("#txt_off_days").val()) || 0;
+        var med_leave = parseFloat($("#txt_med_leave").val()) || 0;
+        var hdays = parseFloat($("#txt_hdays").val()) || 0;
+        var attnd = parseFloat($("#txt_attnd").val()) || 0;
+        
+        var dpaid = cl + off_days + (med_leave / 2) + attnd + hdays + el;
+        $("#txt_dpaid").val(dpaid.toFixed(2));
+    }
+
     $(document).ready(function() {
         $('#getAttendanceSheetBtn').on('click', function() {
             handleGetAttendanceSheet();
@@ -577,6 +612,14 @@ if ((!isset($_SESSION['user']))) {
         $('#syncData').on('click', function() {
             sheet();
             syncSheet();
+        });
+        
+        // Auto-calculate attendance metrics in modal in real-time
+        $('#txt_cl, #txt_el, #txt_lwop, #txt_med_leave, #txt_off_days, #txt_hdays, #txt_wdays').on('input', function() {
+            calculateModalDays();
+        });
+        $('#txt_attnd').on('input', function() {
+            calculateDaysPaidOnly();
         });
     });
 
