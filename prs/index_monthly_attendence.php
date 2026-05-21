@@ -449,7 +449,7 @@ if ((!isset($_SESSION['user']))) {
             return;
         }
 
-        // 1. Perform AJAX check to see if the sheet exists and if payroll is processed
+        // Perform AJAX check to see if the sheet exists and if payroll is processed
         $.ajax({
             url: `ajax_check_sheet_exists.php?month=${selectedMonth}&year=${selectedYear}`,
             type: 'GET',
