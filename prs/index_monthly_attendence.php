@@ -435,9 +435,144 @@ if ((!isset($_SESSION['user']))) {
         });
     }
 
+    function handleGetAttendanceSheet() {
+        var selectedMonth = document.getElementById("month").value;
+        var selectedYear = document.getElementById("year").value;
+
+        if (!selectedMonth || !selectedYear) {
+            Swal.fire({
+                title: 'Selection Required',
+                text: 'Please select both month and year.',
+                icon: 'warning',
+                confirmButtonColor: '#3085d6'
+            });
+            return;
+        }
+
+        // 1. Perform AJAX check to see if the sheet exists and if payroll is processed
+        $.ajax({
+            url: `ajax_check_sheet_exists.php?month=${selectedMonth}&year=${selectedYear}`,
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.error) {
+                    Swal.fire('Error', response.error, 'error');
+                    return;
+                }
+
+                if (response.exists) {
+                    if (response.has_transactions) {
+                        // Payroll transactions already exist - prevent regeneration
+                        Swal.fire({
+                            title: 'Payroll Already Processed',
+                            text: 'Attendance sheet cannot be regenerated because payroll transactions have already been generated/processed for this month. Loading existing attendance sheet.',
+                            icon: 'info',
+                            confirmButtonColor: '#3085d6',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            initializeDataTable();
+                        });
+                    } else {
+                        // Sheet exists but no payroll processed - ask to regenerate or just view
+                        Swal.fire({
+                            title: 'Regenerate Attendance Sheet?',
+                            text: 'An attendance sheet for this month already exists. Do you want to regenerate it and reset to default working days? (Choosing "No, Just View" will preserve your manual edits and just load the sheet).',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            showDenyButton: true,
+                            confirmButtonColor: '#d33',
+                            denyButtonColor: '#3085d6',
+                            cancelButtonColor: '#6e7881',
+                            confirmButtonText: 'Yes, Regenerate',
+                            denyButtonText: 'No, Just View',
+                            cancelButtonText: 'Cancel'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                // User wants to regenerate
+                                generateSheet(selectedMonth, selectedYear, true);
+                            } else if (result.isDenied) {
+                                // User wants to just view the sheet
+                                initializeDataTable();
+                            }
+                        });
+                    }
+                } else {
+                    // Sheet does not exist - ask to create
+                    Swal.fire({
+                        title: 'Create Attendance Sheet?',
+                        text: 'No attendance sheet exists for the selected month and year. Do you want to create a new one?',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Yes, Create it!',
+                        cancelButtonText: 'No'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            generateSheet(selectedMonth, selectedYear, false);
+                        } else {
+                            // Prompt and keep table cleared
+                            Swal.fire({
+                                title: 'Attention Required',
+                                text: 'Please create the sheet to view or enter attendance data.',
+                                icon: 'info',
+                                confirmButtonColor: '#3085d6'
+                            });
+                            if ($.fn.DataTable.isDataTable('#table')) {
+                                $('#table').DataTable().clear().draw();
+                            }
+                        }
+                    });
+                }
+            },
+            error: function() {
+                Swal.fire('Error', 'Failed to check attendance sheet status.', 'error');
+            }
+        });
+    }
+
+    function generateSheet(month, year, regenerate) {
+        Swal.fire({
+            title: regenerate ? 'Regenerating Sheet...' : 'Generating Sheet...',
+            text: 'Please wait while we set up the attendance sheet structure.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        $.ajax({
+            url: 'ajax_generate_sheet.php',
+            type: 'POST',
+            data: {
+                month: month,
+                year: year,
+                regenerate: regenerate ? 1 : 0
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: response.message || (regenerate ? 'Sheet has been successfully regenerated.' : 'Sheet has been successfully created.'),
+                        icon: 'success',
+                        confirmButtonColor: '#3085d6'
+                    }).then(() => {
+                        initializeDataTable();
+                    });
+                } else {
+                    Swal.fire('Error', response.error || 'Failed to process attendance sheet.', 'error');
+                }
+            },
+            error: function() {
+                Swal.fire('Error', 'Failed to communicate with the server.', 'error');
+            }
+        });
+    }
+
     $(document).ready(function() {
         $('#getAttendanceSheetBtn').on('click', function() {
-            initializeDataTable();
+            handleGetAttendanceSheet();
         });
         $('#syncData').on('click', function() {
             sheet();
