@@ -257,7 +257,7 @@ if ((!isset($_SESSION['user']))) {
                                         </div>
                                         <div class="col-span-12 sm:col-span-6">
                                             <label class="form-label">Working Days:</label>
-                                            <input type="text" class="form-control rounded-pill text-dark" name="txt_wdays" id="txt_wdays" placeholder="Working Days" />
+                                            <input type="text" class="form-control rounded-pill text-dark" name="txt_wdays" id="txt_wdays" placeholder="Working Days" readonly />
                                         </div>
                                         <!-- <div class="col-span-12 sm:col-span-6">
                                             <label class="form-label">SPL:</label>
@@ -614,7 +614,6 @@ if ((!isset($_SESSION['user']))) {
             syncSheet();
         });
         
-        // Auto-calculate attendance metrics in modal in real-time
         $('#txt_cl, #txt_el, #txt_lwop, #txt_med_leave, #txt_off_days, #txt_hdays, #txt_wdays').on('input', function() {
             calculateModalDays();
         });
@@ -693,7 +692,7 @@ if ((!isset($_SESSION['user']))) {
                 if (data.status == "Ok") {
                     $("#header-footer-modal-preview").hide();
                     
-                    // Show a premium success toast and reload the DataTable data
+                    
                     Swal.fire({
                         title: 'Updated!',
                         text: 'Attendance details have been successfully updated.',
