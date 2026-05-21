@@ -649,9 +649,27 @@ if ((!isset($_SESSION['user']))) {
             success: function(data) {
                 if (data.status == "Ok") {
                     $("#header-footer-modal-preview").hide();
-                    //   console.log('UPDATE Worked!');
-                    //  updateDataTableLocally(CODE, json);
+                    
+                    // Show a premium success toast and reload the DataTable data
+                    Swal.fire({
+                        title: 'Updated!',
+                        text: 'Attendance details have been successfully updated.',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    
+                    if (dtable) {
+                        dtable.ajax.reload(null, false);
+                    } else {
+                        initializeDataTable();
+                    }
+                } else {
+                    Swal.fire('Error', data.message || 'Failed to update attendance details.', 'error');
                 }
+            },
+            error: function() {
+                Swal.fire('Error', 'Failed to communicate with the server.', 'error');
             },
             data: JSON.stringify(json)
         });
