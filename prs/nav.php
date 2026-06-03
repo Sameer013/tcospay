@@ -160,7 +160,7 @@ function getActivePage($apage, $bpage)
                 </div>
             </a>
             <ul class="<?php getActiveTab($amenu, "transaction"); ?>">
-                <li>
+                <!-- <li>
                     <a href="index_trans_leave.php" class="side-menu <?php getActive($page, "leave"); ?>">
                         <div class="side-menu__icon"><i class="fa-solid fa-person-walking-arrow-right"></i></div>
                         <div class="side-menu__title">Leave </div>
@@ -171,18 +171,18 @@ function getActivePage($apage, $bpage)
                         <div class="side-menu__icon"> <i class="fa-solid fa-piggy-bank"></i></div>
                         <div class="side-menu__title">Leave Application </div>
                     </a>
-                </li>
+                </li> -->
 
                 <?php
                 if ($_SESSION['user'] == 'Admin') {
                 ?>
 
-                    <li>
+                    <!-- <li>
                         <a href="index_daily_attendence.php" class="side-menu <?php getActive($page, "daatt"); ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-clipboard-user"></i></div>
                             <div class="side-menu__title">Daily Attendence </div>
                         </a>
-                    </li>
+                    </li> -->
                     <li>
                         <a href="index_monthly_attendence.php" class="side-menu <?php getActive($page, "mnatt"); ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-address-book"></i></div>
@@ -201,12 +201,12 @@ function getActivePage($apage, $bpage)
                             <div class="side-menu__title">Attendence Machine </div>
                         </a>
                     </li>
-                    <li>
+                    <!-- <li>
                         <a href="index_cat_shift_change.php" class="side-menu <?php getActive($page, "sftch"); ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-person-booth"></i></i></div>
                             <div class="side-menu__title">Shift Change </div>
                         </a>
-                    </li>
+                    </li> -->
                 <?php
                 }
                 ?>
