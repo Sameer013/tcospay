@@ -41,7 +41,7 @@ try {
     // Returns end sheet ID if current month == end month else returns 0
     $end_id = checkArrear($db, $selectedMonth, $selectedYear);
 
-    // $sql_empmast = "SELECT EMPNO, BASIC, STATE FROM empmast";
+    // Get EMPNO, BASIC, STATE 
     $sql_empmast = "SELECT  e.EMPNO, e.BASIC, e.STATE
         FROM sheet_det sd
         JOIN empmast e on sd.empno=e.EMPNO
@@ -96,6 +96,7 @@ try {
             $stmt_insert->execute();
         }
     }
+    // End of first loop for generating TRNSNO
 
     $sql_trnsmst = "SELECT TRNSNO, EMPNO, BASIC, LWOP FROM trnsmst where sheet_id = $sheet_id";
     $stmt_trnsmst = $db->prepare($sql_trnsmst);
@@ -119,10 +120,12 @@ try {
     // $stmt_sql = $db->prepare("TRUNCATE TABLE trnsdet2");
     // $stmt_sql->execute();
 
-    $sql_state = "SELECT STATE FROM trnsmst t JOIN empmast e on t.EMPNO = e.EMPNO WHERE TRNSNO = :trnsno";
+    $sql_state = "SELECT e.STATE FROM trnsmst t JOIN empmast e on t.EMPNO = e.EMPNO WHERE TRNSNO = :trnsno";
     $stmt_state = $db->prepare($sql_state);
 
     $daysInMonth = getDaysInMonth($selectedMonth, $selectedYear);
+
+    // Global Allowance and Deduction Calculation Block
     foreach ($trnsmst as $row) {
         $trnsno = $row['TRNSNO'];
         $basic = $row['BASIC'];
@@ -138,8 +141,9 @@ try {
             $allrednflag = $row['ALLREDNFLAG'];
             $allowance = $row['ALLOWANCE'];
 
+            // Calculation is based on Percentage and not the actual amount
             if ($allrednflag == "a") {
-                if ($tmp == "DA") {
+                if ($tmp == "VDA") {
                     $amount = round($basic * ($allowance / 100));
                     $da = $amount;
                 } else {
@@ -181,7 +185,7 @@ try {
                 $stmt_insert->execute();
             }
         }
-
+        // Individual Allowance and Deduction Calculation Block
         $stmt_indall->bindParam(':empno', $empno);
         $stmt_indall->execute();
         $indall_result = $stmt_indall->fetchAll(PDO::FETCH_ASSOC);
@@ -191,7 +195,7 @@ try {
             $prcamtflag = $row['PRCAMTFLAG'];
             $allrednflag = $row['ALLREDNFLAG'];
             $allowance = $row['ALLOWANCE'];
-
+            // If PRCAMTFLAG contains % then calculate with % else take the actual amount for calculation
             if ($prcamtflag == "%") {
                 $amount = round($basic * $allowance / 100);
             } else {
@@ -229,24 +233,24 @@ try {
         $daysInMonth = getDaysInMonth($selectedMonth, $selectedYear);
         $sql_summary = "
         SELECT t.TRNSNO,
-            MAX(CASE WHEN t1.DESCR='DA' THEN t1.amount END) AS DA,
-            MAX(CASE WHEN t1.DESCR='HRA' THEN t1.amount END) AS HRA,
-            MAX(CASE WHEN t1.DESCR='TA' THEN t1.amount END) AS TA,
-            MAX(CASE WHEN t1.DESCR='SPL' THEN t1.amount END) AS SPL,
-            MAX(CASE WHEN t2.DESCR='PF' THEN t2.amount END) AS PF,
-            MAX(CASE WHEN t2.DESCR='ESIC' THEN t2.amount END) AS ESIC,
-            MAX(CASE WHEN t2.DESCR='iTax' THEN t2.amount END) AS iTax,
-            MAX(CASE WHEN t1.DESCR='HRA' THEN t1.amount ELSE 0 END) +
-            MAX(CASE WHEN t1.DESCR='SPL' THEN t1.amount ELSE 0 END) +
-            MAX(CASE WHEN t1.DESCR='LSA' THEN t1.amount ELSE 0 END) + t.gross AS total_earning,
-            ROUND(MAX(CASE WHEN t2.DESCR='iTax' THEN t2.amount ELSE 0 END) +
-            MAX(CASE WHEN t2.DESCR='PF' THEN t2.amount ELSE 0 END) +
-            MAX(CASE WHEN t2.DESCR='ESIC' THEN t2.amount ELSE 0 END) +
-            IFNULL(ROUND((t.lwop / :daysInMonth) * (MAX(CASE WHEN t1.DESCR='DA' THEN t1.amount ELSE 0 END) + t.basic), 2),0),0) AS total_deduction,
-            ROUND(IFNULL(ROUND((t.lwop / :daysInMonth) * (MAX(CASE WHEN t1.DESCR='DA' THEN t1.amount ELSE 0 END) + t.basic),0),0),0) AS lwopamt,
-            ROUND(MAX(CASE WHEN t1.DESCR='HRA' THEN t1.amount ELSE 0 END) + t.MNTHSAL,0) AS netAmt,
-            get_advInst(t.EMPNO) AS advAmt,
-            get_lsaAmt(t.EMPNO) AS LSA
+            IFNULL(MAX(CASE WHEN t1.DESCR='DA' THEN t1.amount END), 0) AS DA,
+            IFNULL(MAX(CASE WHEN t1.DESCR='HRA' THEN t1.amount END), 0) AS HRA,
+            IFNULL(MAX(CASE WHEN t1.DESCR='TA' THEN t1.amount END), 0) AS TA,
+            IFNULL(MAX(CASE WHEN t1.DESCR='SPL' THEN t1.amount END), 0) AS SPL,
+            IFNULL(MAX(CASE WHEN t2.DESCR='PF' THEN t2.amount END), 0) AS PF,
+            IFNULL(MAX(CASE WHEN t2.DESCR='ESIC' THEN t2.amount END), 0) AS ESIC,
+            IFNULL(MAX(CASE WHEN t2.DESCR='iTax' THEN t2.amount END), 0) AS iTax,
+            IFNULL(MAX(CASE WHEN t1.DESCR='HRA' THEN t1.amount END), 0) +
+            IFNULL(MAX(CASE WHEN t1.DESCR='SPL' THEN t1.amount END), 0) +
+            IFNULL(MAX(CASE WHEN t1.DESCR='LSA' THEN t1.amount END), 0) + t.gross AS total_earning,
+            ROUND(IFNULL(MAX(CASE WHEN t2.DESCR='iTax' THEN t2.amount END), 0) +
+            IFNULL(MAX(CASE WHEN t2.DESCR='PF' THEN t2.amount END), 0) +
+            IFNULL(MAX(CASE WHEN t2.DESCR='ESIC' THEN t2.amount END), 0) +
+            IFNULL(ROUND((t.lwop / :daysInMonth) * (IFNULL(MAX(CASE WHEN t1.DESCR='DA' THEN t1.amount END), 0) + t.basic), 2),0),0) AS total_deduction,
+            ROUND(IFNULL(ROUND((t.lwop / :daysInMonth) * (IFNULL(MAX(CASE WHEN t1.DESCR='DA' THEN t1.amount END), 0) + t.basic),0),0),0) AS lwopamt,
+            IFNULL(ROUND(IFNULL(MAX(CASE WHEN t1.DESCR='HRA' THEN t1.amount END), 0) + t.MNTHSAL,0),0) AS netAmt,
+            IFNULL(get_advInst(t.EMPNO), 0) AS advAmt,
+            IFNULL(get_lsaAmt(t.EMPNO), 0) AS LSA
         FROM trnsmst t
         JOIN trnsdet1 t1 ON t.TRNSNO = t1.TRNSNO
         JOIN trnsdet2 t2 ON t.TRNSNO = t2.TRNSNO

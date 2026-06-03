@@ -76,15 +76,15 @@ if ((!isset($_SESSION['user']))) {
                     <label for="month" class="whitespace-nowrap">For Month:</label>
                     <select class="text-dark p-2 border rounded-md w-full sm:w-40" name="month" id="month">
                         <option value="" selected disabled>Select Month</option>
-                        <option value="1">January</option>
-                        <option value="2">February</option>
-                        <option value="3">March</option>
-                        <option value="4">April</option>
-                        <option value="5">May</option>
-                        <option value="6">June</option>
-                        <option value="7">July</option>
-                        <option value="8">August</option>
-                        <option value="9">September</option>
+                        <option value="01">January</option>
+                        <option value="02">February</option>
+                        <option value="03">March</option>
+                        <option value="04">April</option>
+                        <option value="05">May</option>
+                        <option value="06">June</option>
+                        <option value="07">July</option>
+                        <option value="08">August</option>
+                        <option value="09">September</option>
                         <option value="10">October</option>
                         <option value="11">November</option>
                         <option value="12">December</option>
@@ -241,7 +241,7 @@ if ((!isset($_SESSION['user']))) {
                                         </div>
                                         <div class="col-span-12 sm:col-span-6">
                                             <label class="form-label">Days Worked:</label>
-                                            <input type="text" class="form-control rounded-pill text-dark" name="txt_attnd" id="txt_attnd" placeholder="Days Worked" />
+                                            <input type="text" class="form-control rounded-pill text-dark" name="txt_attnd" id="txt_attnd" placeholder="Days Worked" readonly />
                                         </div>
                                         <div class="col-span-12 sm:col-span-6">
                                             <label class="form-label">Days Paid:</label>
@@ -251,7 +251,7 @@ if ((!isset($_SESSION['user']))) {
                                             <label class="form-label">Pay Mode:</label>
                                             <input type="text" class="form-control rounded-pill text-dark" name="txt_pay_mode" id="txt_pay_mode" placeholder="Pay Mode" />
                                         </div>
-                                        <div class="col-span-12 sm:col-span-6 hidden">
+                                        <div class="col-span-12 sm:col-span-6">
                                             <label class="form-label">Absent:</label>
                                             <input type="text" class="form-control rounded-pill text-dark" name="txt_absent" id="txt_absent" placeholder="Absent" readonly />
                                         </div>
@@ -570,36 +570,56 @@ if ((!isset($_SESSION['user']))) {
         });
     }
 
+    function getNumericInputValue(selector) {
+        return parseFloat($(selector).val()) || 0;
+    }
+
+    function getDaysInSelectedMonth() {
+        var selectedMonth = parseInt($("#month").val(), 10);
+        var selectedYear = parseInt($("#year").val(), 10);
+
+        if (!selectedMonth || !selectedYear) {
+            var today = new Date();
+            selectedMonth = today.getMonth() + 1;
+            selectedYear = today.getFullYear();
+        }
+
+        return new Date(selectedYear, selectedMonth, 0).getDate();
+    }
+
     function calculateModalDays() {
-        var cl = parseFloat($("#txt_cl").val()) || 0;
-        var el = parseFloat($("#txt_el").val()) || 0;
-        var lwop = parseFloat($("#txt_lwop").val()) || 0;
-        var off_days = parseFloat($("#txt_off_days").val()) || 0;
-        var med_leave = parseFloat($("#txt_med_leave").val()) || 0;
-        var hdays = parseFloat($("#txt_hdays").val()) || 0;
-        var wdays = parseFloat($("#txt_wdays").val()) || 0;
-        
-        // Days Worked (present) = Working Days - (CL + EL + LWOP + Sick Leaves)
-        var attnd = wdays - (cl + el + lwop + med_leave);
+        var cl = getNumericInputValue("#txt_cl");
+        var el = getNumericInputValue("#txt_el");
+        var lwop = getNumericInputValue("#txt_lwop");
+        var off_days = getNumericInputValue("#txt_off_days");
+        var med_leave = getNumericInputValue("#txt_med_leave");
+        var hdays = getNumericInputValue("#txt_hdays");
+        var daysInMonth = getDaysInSelectedMonth();
+
+        // Working Days = Days in selected month - (Weekly Off + Holidays)
+        var wdays = daysInMonth - (off_days + hdays);
+        if (wdays < 0) wdays = 0;
+        $("#txt_wdays").val(wdays.toFixed(2));
+
+        // Absent = EL + CL + Sick/Medical Leave + LWOP
+        var absent = cl + el + med_leave + lwop;
+        $("#txt_absent").val(absent.toFixed(2));
+
+        // Days Worked = Working Days - Absent
+        var attnd = wdays - absent;
         if (attnd < 0) attnd = 0;
         $("#txt_attnd").val(attnd.toFixed(2));
-        
-        // Days Paid = Days Worked + CL + EL + Off Days + Holidays + (Sick Leaves / 2)
-        var dpaid = cl + off_days + (med_leave / 2) + attnd + hdays + el;
-        $("#txt_dpaid").val(dpaid.toFixed(2));
-        
-        // Absent = CL + EL + LWOP + Sick Leaves
-        var absent = cl + el + lwop + med_leave;
-        $("#txt_absent").val(absent.toFixed(2));
+
+        calculateDaysPaidOnly();
     }
 
     function calculateDaysPaidOnly() {
-        var cl = parseFloat($("#txt_cl").val()) || 0;
-        var el = parseFloat($("#txt_el").val()) || 0;
-        var off_days = parseFloat($("#txt_off_days").val()) || 0;
-        var med_leave = parseFloat($("#txt_med_leave").val()) || 0;
-        var hdays = parseFloat($("#txt_hdays").val()) || 0;
-        var attnd = parseFloat($("#txt_attnd").val()) || 0;
+        var cl = getNumericInputValue("#txt_cl");
+        var el = getNumericInputValue("#txt_el");
+        var off_days = getNumericInputValue("#txt_off_days");
+        var med_leave = getNumericInputValue("#txt_med_leave");
+        var hdays = getNumericInputValue("#txt_hdays");
+        var attnd = getNumericInputValue("#txt_attnd");
         
         var dpaid = cl + off_days + (med_leave / 2) + attnd + hdays + el;
         $("#txt_dpaid").val(dpaid.toFixed(2));
@@ -614,11 +634,11 @@ if ((!isset($_SESSION['user']))) {
             syncSheet();
         });
         
-        $('#txt_cl, #txt_el, #txt_lwop, #txt_med_leave, #txt_off_days, #txt_hdays, #txt_wdays').on('input', function() {
+        $('#txt_cl, #txt_el, #txt_lwop, #txt_med_leave, #txt_off_days, #txt_hdays').on('input', function() {
             calculateModalDays();
         });
-        $('#txt_attnd').on('input', function() {
-            calculateDaysPaidOnly();
+        $('#month, #year').on('change', function() {
+            calculateModalDays();
         });
     });
 
@@ -637,12 +657,13 @@ if ((!isset($_SESSION['user']))) {
     function load_data(CODE, SHEET_ID) {
         $("#btn_save").hide();
         $("#btn_update").show();
-        console.log(CODE);
-        console.log(SHEET_ID);
+        // console.log(CODE);
+        // console.log(SHEET_ID);
         $.ajax({
             url: '../prsApi/attdmonth/' + CODE + '/' + SHEET_ID,
             method: "GET",
             success: function(res) {
+                console.log("Data: ",res)
                 $("#txt_sheet_id").val(res.sheet_id);
                 $("#txt_empno").val(res.empno);
                 $("#txt_sheetId").val(res.sheet_id);
@@ -658,6 +679,7 @@ if ((!isset($_SESSION['user']))) {
                 $("#txt_pay_mode").val(res.pay_mode);
                 $("#txt_absent").val(res.absent);
                 $("#txt_wdays").val(res.wdays);
+                calculateModalDays();
                 // $("#txt_splPay").val(res.arrear);
                 // $("#txt_iTax").val(res.iTax);
             }
@@ -674,6 +696,7 @@ if ((!isset($_SESSION['user']))) {
     }
 
     $("#btn_update").on("click", function() {
+        calculateModalDays();
         const form = $("#frm_user");
         const json = convertFormToJSON(form);
         console.log(json);

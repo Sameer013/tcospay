@@ -78,6 +78,7 @@ if (empty($selectedMonth) || empty($selectedYear)) {
 
         // 2. Call the stored procedure sp_gensheet(month, year) to generate the sheet structure
         $procedure_sql = "CALL sp_gensheet(:month, :year)";
+        // $procedure_sql = "CALL sp_gensheet_copy(:month, :year)";
         $proc_stmt = $db->prepare($procedure_sql);
         $proc_stmt->bindParam(':month', $selectedMonth, PDO::PARAM_INT);
         $proc_stmt->bindParam(':year', $selectedYear, PDO::PARAM_INT);
