@@ -176,14 +176,14 @@ function printData($pdf, $row, $index, $selectedYear, $month)
 {
 
     $pdf->SetFillColor(220, 220, 220);
-    $imagePath = 'dist/images/jpslogo.jpg';
-    $pdf->Image($imagePath, 10, 15, 20, 20);
+    $imagePath = 'dist/images/tata1.png';
+    $pdf->Image($imagePath, 10, 15, 40, 20);
     //   $pdf->Line(10, $pdf->GetY(), $pdf->getPageWidth() - 10, $pdf->GetY());
     $pdf->SetFont('freesans', '', 15);
-    $pdf->Cell(0, 15, "JAMSHEDPUR PUBLIC SCHOOL", 0, 1, 'C');
+    $pdf->Cell(0, 15, "TELCO CO-OPERATIVE SOCIETY", 0, 1, 'C');
     $pdf->SetY($pdf->GetY() - 9);
-    $pdf->SetFont('freesans', 'U', 12);
-    $pdf->Cell(0, 15, "PANCHAVATI ROAD, NEW BARIDIH, JAMSHEDPUR - 831017", 0, 1, 'C');
+    $pdf->SetFont('freesans', '', 12);
+    $pdf->Cell(0, 15, "Tata Motors, Telco Colony, Jamshedpur, 831004", 0, 1, 'C');
     $pdf->SetY($pdf->GetY() - 2);
     $pdf->SetFont('freesans', 'BU', 15);
     $pdf->Cell(0, 0, "PAYMENT SLIP", 0, 1, 'C');
