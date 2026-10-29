@@ -1,0 +1,13 @@
+Options -Indexes
+DirectoryIndex index.php
+
+# Never serve database dumps, archives, logs or project metadata
+<FilesMatch "(?i)\.(sql|zip|gz|tar|bak|log|lock|env)$|^(composer\.json|\.gitignore|\.htaccess|update_report\.txt)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Git data, PHP libraries and migrations are only used on the server, never over HTTP
+    RewriteRule ^(\.git|vendor|migrations)(/|$) - [F,L]
+</IfModule>

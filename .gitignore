@@ -3,3 +3,4 @@
 update_report.txt
 
 *.sql
+!/migrations/*.sql

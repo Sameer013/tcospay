@@ -1,4 +1,8 @@
 <?php
+// Pages set these to highlight their menu entry; some (dashboard, change password) don't
+$amenu = isset($amenu) ? $amenu : '';
+$page = isset($page) ? $page : '';
+
 function getActive($amenu, $tmenu)
 {
     if ($amenu == $tmenu) echo "side-menu--active";
