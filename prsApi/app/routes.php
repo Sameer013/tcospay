@@ -1383,18 +1383,28 @@ return function (App $app) {
 					$users = is_array($jsonBody) ? $jsonBody : [];
 				}
 
+				// The employee dropdown (empname) is left out of the form data when it is disabled,
+				// so fall back to the hidden employee code field.
+				$empno = !empty($users['empname']) ? $users['empname'] : ($users['code'] ?? '');
+				if ($empno === '') {
+					throw new Exception('Select an employee first');
+				}
+
 				$db = getconn();
 
 				// Fetch numeric code from indallmast using the DESCR text
 				$lookupStmt = $db->prepare("SELECT id FROM indallmast WHERE code = :code");
 				$lookupStmt->execute([':code' => $users['desc']]);
 				$codeId = $lookupStmt->fetchColumn();
+				if ($codeId === false) {
+					throw new Exception("Salary component '" . $users['desc'] . "' not found in the component master");
+				}
 
 				$sql = "INSERT INTO indall(EMPNO, CODE, DESCR, PRCAMTFLAG, ALLREDNFLAG, ALLOWANCE, ALLREDNCONTINUITY)
 						VALUES(:empno, :code, :descr, :flag, :allow, :value, :stillvalid)";
 
 				$stmt = $db->prepare($sql);
-				$stmt->bindParam(":empno",      $users['empname']);
+				$stmt->bindParam(":empno",      $empno);
 				$stmt->bindParam(":code", $codeId);   // id
 				$stmt->bindParam(":descr", $users['desc']);             // 
 				$stmt->bindParam(":flag",       $users['flag']);

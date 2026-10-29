@@ -56,7 +56,7 @@ function checkSheetExistence($db, $selectedMonth, $selectedYear)
 $daysInMonth = getDaysInMonth($selectedMonth, $selectedYear);
 $sheet_id = checkSheetExistence($db, $selectedMonth, $selectedYear);
 
-    $sql = "SELECT e.uanNo, e.NAME, t.gross as gross, ROUND(t.gross - get_lwopAmt(t.TRNSNO, $daysInMonth), 0) as EPFgross, CASE WHEN e.DOB <= DATE_SUB(CURDATE(), INTERVAL 58 YEAR) THEN 0  ELSE 15000 END AS Epswages, '15000' as EDLIwages, t.pfsal,CASE WHEN e.DOB <= DATE_SUB(CURDATE(), INTERVAL 58 YEAR) THEN 0  ELSE 1250 END AS EpsCount, CASE WHEN e.DOB <= DATE_SUB(CURDATE(), INTERVAL 58 YEAR) THEN t.pfsal  ELSE t.pfsal-1250 END AS EpfDiff, t.lwop as ncpdays, 0 as adv
+    $sql = "SELECT e.uanNo, e.NAME, t.gross as gross, ROUND(t.gross - t.lwopamt, 0) as EPFgross, CASE WHEN e.DOB <= DATE_SUB(CURDATE(), INTERVAL 58 YEAR) THEN 0  ELSE 15000 END AS Epswages, '15000' as EDLIwages, t.pfsal,CASE WHEN e.DOB <= DATE_SUB(CURDATE(), INTERVAL 58 YEAR) THEN 0  ELSE 1250 END AS EpsCount, CASE WHEN e.DOB <= DATE_SUB(CURDATE(), INTERVAL 58 YEAR) THEN t.pfsal  ELSE t.pfsal-1250 END AS EpfDiff, t.lwop as ncpdays, 0 as adv
 FROM empmast e
 JOIN trnsmst t ON e.EMPNO = t.EMPNO
 JOIN sheet_det sd ON t.sheet_id = sd.sheet_id AND t.EMPNO = sd.empno
@@ -105,7 +105,7 @@ $filename = 'pf_' .  $selectedMonth . ' and year: ' . $selectedYear . '.xlsx';
 // header('Cache-Control: max-age=0');
 
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-header('Content-Disposition: inline;filename="' . $filename . '"');
+header('Content-Disposition: attachment;filename="' . $filename . '"');
 header('Cache-Control: max-age=0');
 
 $writer->save('php://output');

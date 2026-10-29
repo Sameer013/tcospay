@@ -63,28 +63,9 @@ function checkSheetExistence($db, $selectedMonth, $selectedYear)
 }
 $daysInMonth = getDaysInMonth($selectedMonth, $selectedYear);
 $sheet_id = checkSheetExistence($db, $selectedMonth, $selectedYear);
-$sql = "SELECT 
-  SUM(
-    ROUND(
-      IFNULL(HRA, 0) + MNTHSAL,
-      0
-    )
-  ) AS total
-FROM (
-  SELECT 
-    t.MNTHSAL,
-    MAX(CASE WHEN t1.DESCR = 'HRA' THEN t1.amount ELSE 0 END) AS HRA
+$sql = "SELECT SUM(ROUND(t.netAmt, 0)) AS total
 FROM trnsmst t
-JOIN  sheet s ON t.sheet_id = s.sheet_id
-JOIN empmast e ON t.EMPNO = e.EMPNO
-JOIN dsgmast d ON e.DSGCODE = d.DCODE
-JOIN bankmast b ON e.BID = b.BID
-LEFT JOIN grademaster g ON e.grade = g.Gradecode
-JOIN sheet_det sd ON t.sheet_id = sd.sheet_id AND t.EMPNO = sd.empno
-JOIN trnsdet1 t1 ON t.TRNSNO = t1.TRNSNO
-JOIN trnsdet2 t2 ON t.TRNSNO = t2.TRNSNO
-WHERE t.sheet_id=$sheet_id
-GROUP BY t.TRNSNO) AS sub;";
+WHERE t.sheet_id = $sheet_id";
 
 $stmt = $db->prepare($sql);
 $stmt->execute();

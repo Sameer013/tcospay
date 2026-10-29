@@ -9,157 +9,18 @@ if (!isset($_SESSION['user'])) {
 $userId = $_SESSION['user'];
 require_once('tcpdf/tcpdf.php');
 require_once 'includes/dbconn.php';
-$selectedMonth = isset($_GET['month']) ? $_GET['month'] : '';
-$selectedYear = isset($_GET['year']) ? $_GET['year'] : '';
-function getMonthName($num)
-{
-    $months = [
-        1 => 'Jan',
-        2 => 'Feb',
-        3 => 'Mar',
-        4 => 'Apr',
-        5 => 'May',
-        6 => 'Jun',
-        7 => 'Jul',
-        8 => 'Aug',
-        9 => 'Sep',
-        10 => 'Oct',
-        11 => 'Nov',
-        12 => 'Dec'
-    ];
+require_once "includes/payroll_report.php";
 
-    if (isset($months[$num])) {
-        return $months[$num];
-    } else {
-        return "Invalid month number";
-    }
-}
-$month = getMonthName($selectedMonth);
-function getDaysInMonth($month, $year)
-{
-    return cal_days_in_month(CAL_GREGORIAN, $month, $year);
-}
-function checkSheetExistence($db, $selectedMonth, $selectedYear)
-{
+list($selectedMonth, $selectedYear) = reportPeriod();
+$month = reportMonthName($selectedMonth);
+$sheet_id = reportSheetId($db, $selectedMonth, $selectedYear);
 
-    $sql_sheet_id = "SELECT sheet_id FROM sheet WHERE mnth = $selectedMonth AND yr = $selectedYear";
-
-    $stmt_sheet_id = $db->prepare($sql_sheet_id);
-    $stmt_sheet_id->execute();
-    $sheet_id = $stmt_sheet_id->fetchColumn();
-
-    if ($sheet_id) {
-        return $sheet_id;
-    } else {
-        echo '<script type="text/javascript">alert("No Month Data");
-       // window.location.href = "index_salary.php";</script>';
-        die();
-    }
-}
-
-$db->exec("SET SESSION sql_mode = (SELECT REPLACE(@@SESSION.sql_mode, 'ONLY_FULL_GROUP_BY', ''))");
-
-$daysInMonth = getDaysInMonth($selectedMonth, $selectedYear);
-$sheet_id = checkSheetExistence($db, $selectedMonth, $selectedYear);
-if ($userId == 'Admin' || $userId == 'Super Admin') {
-    $sql = "SELECT s.mnth, s.yr,  t.TRNSNO, t.EMPNO, e.NAME,d.DESCR DESIGNATION, e.SEFNO ESIC_NO, e.PFACNO, e.PAN, b.DESCR BANK, e.ACCNO, t.BASIC, e.PHONE1, g.GRADE, e.uanNo, MAX(CASE WHEN t1.DESCR = 'DA' THEN t1.amount END) AS DA, MAX(CASE WHEN t1.DESCR = 'HRA' THEN t1.amount END) AS HRA, MAX(CASE WHEN t1.DESCR = 'TA' THEN t1.amount END) AS TA, MAX(CASE WHEN t1.DESCR = 'SPL' THEN t1.amount END) AS SPL, MAX(CASE WHEN t2.DESCR = 'PF' THEN t2.amount END) AS PF, MAX(CASE WHEN t2.DESCR = 'ESIC' THEN t2.amount END) AS ESIC, MAX(CASE WHEN t2.DESCR = 'iTax' THEN t2.amount END) AS iTax, MAX(CASE WHEN t1.DESCR = 'HRA' THEN t1.amount ELSE 0 END) +
-MAX(CASE WHEN t1.DESCR = 'SPL' THEN t1.amount ELSE 0 END) + MAX(CASE WHEN t1.DESCR = 'LSA' THEN t1.amount ELSE 0 END) + t.gross  AS total_earning, CONCAT(
-  ROUND(
-    MAX(CASE WHEN t2.DESCR = 'iTax' THEN t2.amount ELSE 0 END) +
-    MAX(CASE WHEN t2.DESCR = 'PF' THEN t2.amount ELSE 0 END) +
-    MAX(CASE WHEN t2.DESCR = 'ESIC' THEN t2.amount ELSE 0 END) +
-    IFNULL(
-      ROUND(
-        (t.lwop / $daysInMonth) * 
-        ((CASE WHEN t1.DESCR = 'DA' THEN t1.amount ELSE 0 END) + t.basic),
-      2),
-    0),
-  0),
-  '.00'
-) AS total_deduction, t.lwop, t.adj, t.gross,  sd.cl, sd.el, sd.hdays, sd.off_days, sd.spleave, ROUND((sd.cl + sd.spleave + sd.off_days + sd.med_leave + sd.attnd + sd.hdays), 2) as dpaid, sd.attnd as dwork, (sd.cl + sd.spleave + sd.med_leave) as LWP, CONCAT(
-  IFNULL(
-    ROUND(
-      (t.lwop / $daysInMonth) * 
-      ((CASE WHEN t1.DESCR = 'DA' THEN t1.amount ELSE 0 END) + t.basic),
-      0
-    ),
-    0
-  ),
-  '.00'
-) AS lwopamt
-, CONCAT(
-  ROUND(
-    MAX(CASE WHEN t1.DESCR = 'HRA' THEN t1.amount ELSE 0 END) + t.MNTHSAL,
-    0
-  ),
-  '.00'
-) AS MNTHSAL, sd.med_leave, get_advInst(t.EMPNO) AS advAmt, t.esisal, get_lsaAmt(t.EMPNO) as LSA, e.ocl, e.oml, e.oel, e.ospl, (e.ocl-sd.cl) as ccl, (e.oml-sd.med_leave) as cml, (e.oel-sd.el) as cel
-FROM trnsmst t
-JOIN  sheet s ON t.sheet_id = s.sheet_id
-JOIN empmast e ON t.EMPNO = e.EMPNO
-JOIN dsgmast d ON e.DSGCODE = d.DCODE
-JOIN bankmast b ON e.BID = b.BID
-JOIN grademaster g ON e.grade = g.Gradecode
-JOIN sheet_det sd ON t.sheet_id = sd.sheet_id AND t.EMPNO = sd.empno
-JOIN trnsdet1 t1 ON t.TRNSNO = t1.TRNSNO
-JOIN trnsdet2 t2 ON t.TRNSNO = t2.TRNSNO
-WHERE t.sheet_id=$sheet_id
-GROUP BY t.TRNSNO
-ORDER BY e.EMPNO";
-} else {
-    $sql = "SELECT s.mnth, s.yr,  t.TRNSNO, t.EMPNO, e.NAME,d.DESCR DESIGNATION, e.SEFNO ESIC_NO, e.PFACNO, e.PAN, b.DESCR BANK, e.ACCNO, t.BASIC, e.PHONE1, g.GRADE, e.uanNo, MAX(CASE WHEN t1.DESCR = 'DA' THEN t1.amount END) AS DA, MAX(CASE WHEN t1.DESCR = 'HRA' THEN t1.amount END) AS HRA, MAX(CASE WHEN t1.DESCR = 'TA' THEN t1.amount END) AS TA, MAX(CASE WHEN t1.DESCR = 'SPL' THEN t1.amount END) AS SPL, MAX(CASE WHEN t2.DESCR = 'PF' THEN t2.amount END) AS PF, MAX(CASE WHEN t2.DESCR = 'ESIC' THEN t2.amount END) AS ESIC, MAX(CASE WHEN t2.DESCR = 'iTax' THEN t2.amount END) AS iTax, MAX(CASE WHEN t1.DESCR = 'HRA' THEN t1.amount ELSE 0 END) +
-MAX(CASE WHEN t1.DESCR = 'SPL' THEN t1.amount ELSE 0 END) + MAX(CASE WHEN t1.DESCR = 'LSA' THEN t1.amount ELSE 0 END) + t.gross  AS total_earning, CONCAT(
-  ROUND(
-    MAX(CASE WHEN t2.DESCR = 'iTax' THEN t2.amount ELSE 0 END) +
-    MAX(CASE WHEN t2.DESCR = 'PF' THEN t2.amount ELSE 0 END) +
-    MAX(CASE WHEN t2.DESCR = 'ESIC' THEN t2.amount ELSE 0 END) +
-    IFNULL(
-      ROUND(
-        (t.lwop / $daysInMonth) * 
-        ((CASE WHEN t1.DESCR = 'DA' THEN t1.amount ELSE 0 END) + t.basic),
-      2),
-    0),
-  0),
-  '.00'
-) AS total_deduction, t.lwop, t.adj, t.gross,  sd.cl, sd.el, sd.hdays, sd.off_days, sd.spleave, ROUND((sd.cl + sd.spleave + sd.off_days + sd.med_leave + sd.attnd + sd.hdays), 2) as dpaid, sd.attnd as dwork, (sd.cl + sd.spleave + sd.med_leave) as LWP, CONCAT(
-  IFNULL(
-    ROUND(
-      (t.lwop / $daysInMonth) * 
-      ((CASE WHEN t1.DESCR = 'DA' THEN t1.amount ELSE 0 END) + t.basic),
-      0
-    ),
-    0
-  ),
-  '.00'
-) AS lwopamt
-, CONCAT(
-  ROUND(
-    MAX(CASE WHEN t1.DESCR = 'HRA' THEN t1.amount ELSE 0 END) + t.MNTHSAL,
-    0
-  ),
-  '.00'
-) AS MNTHSAL, sd.med_leave, get_advInst(t.EMPNO) AS advAmt, t.esisal, get_lsaAmt(t.EMPNO) as LSA, e.ocl, e.oml, e.oel, e.ospl, (e.ocl-sd.cl) as ccl, (e.oml-sd.med_leave) as cml, (e.oel-sd.el) as cel
-FROM trnsmst t
-JOIN  sheet s ON t.sheet_id = s.sheet_id
-JOIN empmast e ON t.EMPNO = e.EMPNO
-JOIN dsgmast d ON e.DSGCODE = d.DCODE
-JOIN bankmast b ON e.BID = b.BID
-JOIN grademaster g ON e.grade = g.Gradecode
-JOIN sheet_det sd ON t.sheet_id = sd.sheet_id AND t.EMPNO = sd.empno
-JOIN trnsdet1 t1 ON t.TRNSNO = t1.TRNSNO
-JOIN trnsdet2 t2 ON t.TRNSNO = t2.TRNSNO
-WHERE t.sheet_id=$sheet_id AND e.EMPNO=$userId
-GROUP BY t.TRNSNO";
-}
-$stmt = $db->prepare($sql);
-$stmt->execute();
-$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Admins get every employee; an employee login gets only their own slip
+$isAdmin = ($userId == "Admin" || $userId == "Super Admin");
+$payroll = loadPayroll($db, $sheet_id, $isAdmin ? null : $userId);
+$rows = $payroll["rows"];
 if (empty($rows)) {
-    echo '<script type="text/javascript">';
-    echo 'alert("No data found in the database.' . $selectedMonth . ' and year: ' . $selectedYear . '");';
-    //  echo 'window.location.href = "index_salary.php";';
-    echo '</script>';
-    die();
+    reportStop("No data found for " . $month . " " . $selectedYear);
 }
 $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, 'A4', true, 'UTF-8', false);
 $pdf->SetPrintHeader(false);
@@ -285,7 +146,7 @@ function printData($pdf, $row, $index, $selectedYear, $month)
     $pdf->Cell(20, 5, $row['dpaid'], 1, 0, 'C');
     $pdf->SetX(125);
     $pdf->SetFont('freesans', '', 6);
-    $pdf->Cell(50, 5, "STATE BANK OF INDIA, GOLMURI BRANCH", 1, 0, 'C');
+    $pdf->Cell(50, 5, strtoupper((string) $row['BANK']), 1, 0, 'C');
     $pdf->SetX(175);
     $pdf->SetFont('freesans', '', 8);
     $pdf->Cell(25, 5, $row['ACCNO'], 1, 1, 'C');
@@ -305,89 +166,48 @@ function printData($pdf, $row, $index, $selectedYear, $month)
     $pdf->SetX(170);
     $pdf->Cell(30, 5, "AMOUNT", 1, 1, 'C', true);
 
-    $pdf->Cell(0, 5, "BASIC", 1, 0, 'L');
-    $pdf->SetX(75);
-    $pdf->Cell(30, 5, "₹ " . $row['BASIC'], 1, 0, 'R');
-    $pdf->SetX(105);
-    $pdf->Cell(0, 5, "LOWP", 1, 0, 'L');
-    $pdf->SetX(170);
-    $pdf->Cell(30, 5, "₹ " . $row['lwopamt'], 1, 1, 'R');
+    // Earnings: basic, LSA and every allowance component; deductions: LWOP and every deduction component
+    $earnings = array("BASIC" => $row["BASIC"]);
+    if ($row["LSA"] > 0) {
+        $earnings["LONG SERVICE ALLOWANCE"] = $row["LSA"];
+    }
+    foreach ($row["earnings"] as $name => $amount) {
+        $earnings[$name] = $amount;
+    }
+    $deductions = array("LWOP" => $row["lwopamt"]);
+    foreach ($row["deductions"] as $name => $amount) {
+        $deductions[$name] = $amount;
+    }
+    $earnNames = array_keys($earnings);
+    $dedNames = array_keys($deductions);
+    $lineCount = max(count($earnNames), count($dedNames), 8);
+    $money = function ($amount) {
+        return "₹ " . number_format((float) $amount, 2, ".", "");
+    };
+    for ($i = 0; $i < $lineCount; $i++) {
+        $e = isset($earnNames[$i]) ? $earnNames[$i] : null;
+        $d = isset($dedNames[$i]) ? $dedNames[$i] : null;
+        $pdf->Cell(0, 5, $e !== null ? strtoupper($e) : "", 1, 0, "L");
+        $pdf->SetX(75);
+        $pdf->Cell(30, 5, $e !== null ? $money($earnings[$e]) : "", 1, 0, "R");
+        $pdf->SetX(105);
+        $pdf->Cell(0, 5, $d !== null ? strtoupper($d) : "", 1, 0, "L");
+        $pdf->SetX(170);
+        $pdf->Cell(30, 5, $d !== null ? $money($deductions[$d]) : "", 1, 1, "R");
+    }
 
-    $pdf->Cell(0, 5, "DA 4%", 1, 0, 'L');
+    $pdf->Cell(0, 5, "TOTAL EARNING ( GROSS )", 1, 0, "L", true);
     $pdf->SetX(75);
-    $pdf->Cell(30, 5, "₹ " .  $row['DA'], 1, 0, 'R');
+    $pdf->Cell(30, 5, $money($row["gross"]), 1, 0, "R", true);
     $pdf->SetX(105);
-    $pdf->Cell(0, 5, "PROVIDENT FUND", 1, 0, 'L');
+    $pdf->Cell(0, 5, "TOTAL DEDUCTION", 1, 0, "L", true);
     $pdf->SetX(170);
-    $pdf->Cell(30, 5, "₹ " .  $row['PF'], 1, 1, 'R');
+    $pdf->Cell(30, 5, $money($row["total_deduction"]), 1, 1, "R", true);
 
-    $pdf->Cell(0, 5, "HOUSE RENT ALLOWANCE 3%", 1, 0, 'L');
+    $pdf->Cell(65, 5, "NET EARNING", 1, 0, "L", true);
     $pdf->SetX(75);
-    $pdf->Cell(30, 5, "₹ " . (isset($row['HRA']) ? $row['HRA'] : '0.00'), 1, 0, 'R');
-    $pdf->SetX(105);
-    $pdf->Cell(0, 5, "ESI", 1, 0, 'L');
-    $pdf->SetX(170);
-    $pdf->Cell(30, 5, "₹ " . $row['ESIC'], 1, 1, 'R');
-
-    $pdf->Cell(0, 5, "LONG SERVICE ALLOWANCE", 1, 0, 'L');
-    $pdf->SetX(75);
-    $pdf->Cell(30, 5, "₹ " . (isset($row['LSA']) ? $row['LSA'] : '0.00'), 1, 0, 'R');
-    $pdf->SetX(105);
-    $pdf->Cell(0, 5, "INCOME TAX", 1, 0, 'L');
-    $pdf->SetX(170);
-    $pdf->Cell(30, 5, "₹ " . (!empty($row['iTax']) ? $row['iTax'] : '0.00'), 1, 1, 'R');
-
-    $pdf->Cell(0, 5, "SPECIAL ALLOWANCE", 1, 0, 'L');
-    $pdf->SetX(75);
-    $pdf->Cell(30, 5, "₹ " . (isset($row['SPL']) ? $row['SPL'] : '0.00'), 1, 0, 'R');
-    $pdf->SetX(105);
-    $pdf->Cell(0, 5, "PROFESSIONAL TAX", 1, 0, 'L');
-    $pdf->SetX(170);
-    $pdf->Cell(30, 5, "", 1, 1, 'R');
-
-    $pdf->Cell(0, 5, "OTHERS ALLOWANCE", 1, 0, 'L');
-    $pdf->SetX(75);
-    $pdf->Cell(30, 5, "", 1, 0, 'R');
-    $pdf->SetX(105);
-    $pdf->Cell(0, 5, "ADVANCE", 1, 0, 'L');
-    $pdf->SetX(170);
-    $pdf->Cell(30, 5, "₹ " . (!empty($row['advAmt']) ? $row['advAmt'] : '0.00'), 1, 1, 'R');
-    $pdf->Cell(0, 5, "", 1, 0, 'L');
-    $pdf->SetX(75);
-    $pdf->Cell(30, 5, "", 1, 0, 'R');
-    $pdf->SetX(105);
-    $pdf->Cell(0, 5, "LIFE INSURANCE PREMIUM", 1, 0, 'L');
-    $pdf->SetX(170);
-    $pdf->Cell(30, 5, "", 1, 1, 'R');
-
-    $pdf->Cell(0, 5, "", 1, 0, 'L');
-    $pdf->SetX(75);
-    $pdf->Cell(30, 5, "", 1, 0, 'R');
-    $pdf->SetX(105);
-    $pdf->Cell(0, 5, "OTHERS", 1, 0, 'L');
-    $pdf->SetX(170);
-    $pdf->Cell(30, 5, "", 1, 1, 'R');
-
-    $pdf->Cell(0, 5, "", 1, 0, 'L');
-    $pdf->SetX(75);
-    $pdf->Cell(30, 5, "", 1, 0, 'R');
-    $pdf->SetX(105);
-    $pdf->Cell(0, 5, "", 1, 0, 'L');
-    $pdf->SetX(170);
-    $pdf->Cell(30, 5, "", 1, 1, 'R');
-
-    $pdf->Cell(0, 5, "TOTAL EARNING ( GROSS )", 1, 0, 'L', true);
-    $pdf->SetX(75);
-    $pdf->Cell(30, 5, "₹ " . $row['total_earning'], 1, 0, 'R', true);
-    $pdf->SetX(105);
-    $pdf->Cell(0, 5, "TOTAL DEDUCTION", 1, 0, 'L', true);
-    $pdf->SetX(170);
-    $pdf->Cell(30, 5, "₹ " . $row['total_deduction'], 1, 1, 'R', true);
-
-    $pdf->Cell(65, 5, "NET EARNING", 1, 0, 'L', true);
-    $pdf->SetX(75);
-    $pdf->Cell(30, 5, "₹ " .  $row['MNTHSAL'], 1, 0, 'R', true);
-    $pdf->Cell(95, 5, "", 1, 1, 'L');
+    $pdf->Cell(30, 5, $money($row["netAmt"]), 1, 0, "R", true);
+    $pdf->Cell(95, 5, "", 1, 1, "L");
     $pdf->Ln(5);
 
     $pdf->SetFont('freesans', '', 9);
@@ -398,7 +218,7 @@ function printData($pdf, $row, $index, $selectedYear, $month)
     $pdf->SetFont('freesans', '', 9);
     $pdf->Cell(65, 5, "NET SALARY (" . $month . " - " . $selectedYear . ")", 1, 0, 'L');
     $pdf->SetX(75);
-    $pdf->Cell(30, 5, "₹ " .  $row['MNTHSAL'], 1, 1, 'R');
+    $pdf->Cell(30, 5, "₹ " . number_format((float) $row['netAmt'], 2, ".", ""), 1, 1, 'R');
     $pdf->Ln(5);
 
     $pdf->SetFont('freesans', '', 9);
@@ -428,7 +248,7 @@ function printData($pdf, $row, $index, $selectedYear, $month)
 
     $pdf->Cell(0, 5, "INCOME TAX", 1, 0, 'L');
     $pdf->SetX(75);
-    $pdf->Cell(30, 5, "₹ " . (!empty($row['iTax']) ? $row['iTax'] : '0.00'), 1, 0, 'R');
+    $pdf->Cell(30, 5, "₹ " . number_format(headAmount($row, 'deductions', 'iTax'), 2, ".", ""), 1, 0, 'R');
     $pdf->SetX(105);
     $pdf->Cell(0, 5, "CONSUMED", 1, 0, 'L');
     $pdf->SetX(155);

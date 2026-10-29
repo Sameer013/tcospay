@@ -55,19 +55,21 @@ function checkSheetExistence($db, $selectedMonth, $selectedYear)
 $daysInMonth = getDaysInMonth($selectedMonth, $selectedYear);
 $sheet_id = checkSheetExistence($db, $selectedMonth, $selectedYear);
 
+// Employee's ESI is their ESIC deduction component; employer's share is 3.25% of gross
 $sql = "SELECT
     e.EMPNO,
     e.SEFNO,
     e.NAME,
     FORMAT(ROUND(sd.cl + sd.spleave + sd.off_days + sd.med_leave + sd.attnd + sd.hdays), 2) AS dpaid,
     FORMAT(ROUND(t.gross), 2) AS gross,
-    FORMAT(ROUND(t.esisal), 2) AS esisal,
+    FORMAT(ROUND(esi.AMOUNT), 2) AS esisal,
     FORMAT(ROUND(t.gross * 3.25 / 100), 2) AS esiEmp,
-    FORMAT(ROUND(ROUND(t.esisal) + ROUND(t.gross * 3.25 / 100)), 2) AS total
+    FORMAT(ROUND(ROUND(esi.AMOUNT) + ROUND(t.gross * 3.25 / 100)), 2) AS total
 FROM empmast e
 JOIN trnsmst t ON e.EMPNO = t.EMPNO
-JOIN sheet_det sd ON t.sheet_id = sd.sheet_id AND t.EMPNO = sd.empno
-WHERE t.sheet_id = $sheet_id AND t.esisal != 0";
+JOIN trnsdet2 esi ON esi.TRNSNO = t.TRNSNO AND esi.DESCR = 'ESIC'
+LEFT JOIN sheet_det sd ON t.sheet_id = sd.sheet_id AND t.EMPNO = sd.empno
+WHERE t.sheet_id = $sheet_id AND esi.AMOUNT > 0";
 
 $stmt = $db->prepare($sql);
 $stmt->execute();
@@ -162,7 +164,7 @@ $writer = new Xlsx($spreadsheet);
 $filename = 'esic_' . $selectedMonth . '- ' . $selectedYear . '.xlsx';
 
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-header('Content-Disposition: inline;filename="' . $filename . '"');
+header('Content-Disposition: attachment;filename="' . $filename . '"');
 header('Cache-Control: max-age=0');
 
 $writer->save('php://output');

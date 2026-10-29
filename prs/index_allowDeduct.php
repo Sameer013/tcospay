@@ -390,6 +390,9 @@ $salaryComponents = $componentStmt->fetchAll(PDO::FETCH_ASSOC);
         $("#btn_save").show();
         $("#btn_update").hide();
         $('#frm_user').trigger("reset");
+        // Undo the edit-mode lock from load_data(), otherwise the employee is left out of the form
+        $("#txt_empname").prop("disabled", false);
+        $("#txt_desc").removeData("original-descr");
         const empno = getSelectedEmployee();
         if (!empno) {
             Swal.fire('Select an employee first', 'Pick an employee from the filter before adding a record.', 'warning');
@@ -434,7 +437,7 @@ $salaryComponents = $componentStmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
         $("#txt_code").val(empno);
-        $("#txt_empname").val(empno);
+        $("#txt_empname").prop("disabled", false).val(empno);
 
         const form = $("#frm_user");
         const json = convertFormToJSON(form);

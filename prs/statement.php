@@ -52,13 +52,11 @@ function checkSheetExistence($db, $selectedMonth, $selectedYear)
     }
 }
 $sheet_id = checkSheetExistence($db, $selectedMonth, $selectedYear);
-$sql = "SELECT e.uanNo, e.NAME, e.PFACNO, e.ACCNO, ROUND(MAX(CASE WHEN t1.DESCR = 'HRA' THEN t1.amount ELSE 0 END + t.MNTHSAL), 0) AS MNTHSAL
-FROM empmast e
-JOIN trnsmst t on e.EMPNO=t.EMPNO
-JOIN trnsdet1 t1 ON t.TRNSNO = t1.TRNSNO
-JOIN sheet_det sd ON t.sheet_id = sd.sheet_id AND t.EMPNO = sd.empno
-WHERE t.sheet_id=$sheet_id
-GROUP BY t.TRNSNO";
+$sql = "SELECT e.uanNo, e.NAME, e.PFACNO, e.ACCNO, ROUND(t.netAmt, 0) AS MNTHSAL
+FROM trnsmst t
+JOIN empmast e ON e.EMPNO = t.EMPNO
+WHERE t.sheet_id = $sheet_id
+ORDER BY e.EMPNO";
 
 $stmt = $db->prepare($sql);
 $stmt->execute();

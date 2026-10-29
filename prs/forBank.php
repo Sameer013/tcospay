@@ -59,12 +59,11 @@ function checkSheetExistence($db, $selectedMonth, $selectedYear)
 }
 $sheet_id = checkSheetExistence($db, $selectedMonth, $selectedYear);
 
-$sql = "SELECT e.EMPNO, e.NAME, e.ACCNO, ROUND(MAX(CASE WHEN t1.DESCR = 'HRA' THEN t1.amount ELSE 0 END + t.MNTHSAL), 0) AS MNTHSAL
-FROM empmast e
-JOIN trnsmst t ON e.EMPNO = t.EMPNO
-JOIN trnsdet1 t1 ON t.TRNSNO = t1.TRNSNO
-WHERE t.SHEET_ID = $sheet_id
-GROUP BY t.TRNSNO";
+$sql = "SELECT e.EMPNO, e.NAME, e.ACCNO, ROUND(t.netAmt, 2) AS MNTHSAL
+FROM trnsmst t
+JOIN empmast e ON e.EMPNO = t.EMPNO
+WHERE t.sheet_id = $sheet_id
+ORDER BY e.EMPNO";
 $stmt = $db->prepare($sql);
 $stmt->execute();
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -80,8 +79,8 @@ $rowsPerPage = 38;
 
 function addHeader($sheet, $month, $selectedYear, $startRow)
 {
-    $sheet->setCellValue('A' . $startRow, 'JAMSHEDPUR PUBLIC SCHOOL');
-    $sheet->setCellValue('A' . ($startRow + 1), 'PANCHAVATI ROAD, NEW BARIDIH, JAMSHEDPUR - 831 017');
+    $sheet->setCellValue('A' . $startRow, 'Telco Co-Operative Society Ltd');
+    $sheet->setCellValue('A' . ($startRow + 1), 'Telco, Jamshedpur - 831004');
     $sheet->setCellValue('A' . ($startRow + 2), 'SALARY STATEMENT FOR THE MONTH OF '. $month . ' - '.  $selectedYear);
     $sheet->mergeCells('A' . $startRow . ':D' . $startRow);
     $sheet->mergeCells('A' . ($startRow + 1) . ':D' . ($startRow + 1));
@@ -102,7 +101,7 @@ $sheet->getStyle('A3')->getFont()->setSize(14);
 function addFooter($sheet, $rowNumber)
 {
     $footerStartRow = $rowNumber + 3;
-    $footerText = 'PRINCIPAL           CHAIRPERSON              SECRETARY                 TREASURER';
+    $footerText = 'ADMIN           CHAIRPERSON              SECRETARY                 TREASURER';
     $sheet->setCellValue('A' . $footerStartRow, $footerText);
     $sheet->mergeCells('A' . $footerStartRow . ':D' . $footerStartRow);
     $sheet->getStyle('A' . $footerStartRow . ':D' . $footerStartRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);

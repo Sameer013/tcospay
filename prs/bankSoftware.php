@@ -49,12 +49,11 @@ function checkSheetExistence($db, $selectedMonth, $selectedYear)
     }
 }
 $sheet_id = checkSheetExistence($db, $selectedMonth, $selectedYear);
-$sql = "SELECT  e.ACCNO, ROUND(MAX(CASE WHEN t1.DESCR = 'HRA' THEN t1.amount ELSE 0 END + t.MNTHSAL), 0) AS MNTHSAL
-FROM empmast e
-JOIN trnsmst t ON e.EMPNO = t.EMPNO
-JOIN trnsdet1 t1 ON t.TRNSNO = t1.TRNSNO
+$sql = "SELECT e.ACCNO, ROUND(t.netAmt, 0) AS MNTHSAL
+FROM trnsmst t
+JOIN empmast e ON e.EMPNO = t.EMPNO
 WHERE t.sheet_id = $sheet_id
-GROUP BY t.TRNSNO";
+ORDER BY e.EMPNO";
 
 $stmt = $db->prepare($sql);
 $stmt->execute();
@@ -108,7 +107,7 @@ $writer = new Xlsx($spreadsheet);
 $filename = 'BankSoftware_' . $month . '_' . $selectedYear . '.xlsx';
 
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-header('Content-Disposition: inline;filename="' . $filename . '"');
+header('Content-Disposition: attachment;filename="' . $filename . '"');
 header('Cache-Control: max-age=0');
 
 $writer->save('php://output');

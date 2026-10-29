@@ -1,307 +1,234 @@
 <?php
-// sleep(2);
-$selectedMonth = isset($_GET['month']) ? $_GET['month'] : '';
-$selectedYear = isset($_GET['year']) ? $_GET['year'] : '';
+/*
+ * Monthly payroll processing.
+ *
+ * For every employee on the month's attendance sheet:
+ *   - basic comes from empmast
+ *   - global heads (gblall) apply to everyone
+ *   - individual heads (indall) are the employee's own salary components; a head
+ *     with the same name as a global one overrides it for that employee
+ *   - a head is either '%' of basic or a fixed amount; a head with no value is 0
+ *   - 'a' heads are earnings (trnsdet1), 'd' heads are deductions (trnsdet2)
+ *
+ *   gross pay       = basic + LSA + all earnings
+ *   gross deduction = all deductions + advance instalment + LWOP amount (basic / days * LWOP days)
+ *   net pay         = gross pay - gross deduction
+ */
+session_start();
+header('Content-Type: application/json');
 
-$pfceil = 20000; //Pf Ceil Value that will used for calculation change according to client requirments.
-function getMonthName($num){
-    $months = [ 1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'May', 6 => 'Jun', 7 => 'Jul', 8 => 'Aug', 9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dec' ];
+function respond($status, $msg, $extra = array())
+{
+    http_response_code($status);
+    echo json_encode(array_merge(array('msg' => $msg, 'status' => $status), $extra));
+    exit;
+}
 
-    if (isset($months[$num])) {
-        return $months[$num];
-    } else {
-        return "Invalid month number";
+if (!isset($_SESSION['user'])) {
+    respond(401, 'Please login first');
+}
+
+$selectedMonth = filter_input(INPUT_GET, 'month', FILTER_VALIDATE_INT, array('options' => array('min_range' => 1, 'max_range' => 12)));
+$selectedYear = filter_input(INPUT_GET, 'year', FILTER_VALIDATE_INT, array('options' => array('min_range' => 2000, 'max_range' => 2100)));
+if (!$selectedMonth || !$selectedYear) {
+    respond(400, 'Invalid month or year');
+}
+
+// Builds the list of heads for one employee: global heads first, then individual heads
+// (an individual head replaces a global head of the same name).
+function employeeHeads($globalHeads, $individualHeads)
+{
+    $heads = array();
+    foreach (array($globalHeads, $individualHeads) as $source) {
+        foreach ($source as $head) {
+            $name = trim((string) $head['DESCR']);
+            $type = strtolower(trim((string) $head['ALLREDNFLAG']));
+            if ($name === '' || ($type !== 'a' && $type !== 'd')) {
+                continue; // blank / incomplete component rows
+            }
+            $heads[strtoupper($name)] = array(
+                'name' => $name,
+                'type' => $type,
+                'percent' => trim((string) $head['PRCAMTFLAG']) === '%',
+                'value' => (float) $head['ALLOWANCE'], // NULL -> 0
+            );
+        }
+    }
+    return $heads;
+}
+
+// Inserts rows into a trnsdet table in chunks.
+function insertLines($db, $table, $lines)
+{
+    foreach (array_chunk($lines, 500) as $chunk) {
+        $sql = "INSERT INTO $table (TRNSNO, DESCR, AMOUNT) VALUES " . implode(',', array_fill(0, count($chunk), '(?, ?, ?)'));
+        $params = array();
+        foreach ($chunk as $line) {
+            array_push($params, $line[0], $line[1], $line[2]);
+        }
+        $db->prepare($sql)->execute($params);
     }
 }
-function getDaysInMonth($month, $year)
-{
-    return cal_days_in_month(CAL_GREGORIAN, $month, $year);
-}
-
-function checkArrear($db, $selectedMonth, $selectedYear)
-{
-    $check_vdate = $db->prepare("
-        SELECT s.sheet_id FROM sheet s JOIN arrear a ON s.mnth = MONTH(a.dte) AND s.yr = YEAR(a.dte)
-        WHERE MONTH(a.dte) = :mnth AND YEAR(a.dte) = :yr LIMIT 1 ");
-    $check_vdate->bindParam(':mnth', $selectedMonth);
-    $check_vdate->bindParam(':yr', $selectedYear);
-    $check_vdate->execute();
-    $end_id = $check_vdate->fetchColumn();
-    return $end_id ? $end_id : 0;
-}
-
 
 try {
     include('includes/dbconn.php');
-    // Fetching Sheet ID from selected month and year
-     $sheet_fun = $db->prepare("SELECT get_sheetid($selectedMonth, $selectedYear) as sheet_id");
-    $sheet_fun->execute();
-    $sheet_id = $sheet_fun->fetch()['sheet_id'];
 
-    // Returns end sheet ID if current month == end month else returns 0
-    $end_id = checkArrear($db, $selectedMonth, $selectedYear);
+    $stmt = $db->prepare("SELECT sheet_id FROM sheet WHERE mnth = :mnth AND yr = :yr LIMIT 1");
+    $stmt->execute(array(':mnth' => $selectedMonth, ':yr' => $selectedYear));
+    $sheet_id = $stmt->fetchColumn();
+    if (!$sheet_id) {
+        respond(404, 'No Month Data', array('month' => $selectedMonth, 'year' => $selectedYear));
+    }
 
-    // Get EMPNO, BASIC, STATE 
-    $sql_empmast = "SELECT  e.EMPNO, e.BASIC, e.STATE
+    $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $selectedMonth, $selectedYear);
+    $mnthyr = date('M', mktime(0, 0, 0, $selectedMonth, 1)) . ' ' . $selectedYear;
+
+    // Employees on this month's sheet
+    $stmt = $db->prepare("
+        SELECT e.EMPNO, COALESCE(e.BASIC, 0) AS BASIC, COALESCE(sd.lwop, 0) AS LWOP,
+            COALESCE(get_lsaAmt(e.EMPNO), 0) AS LSA, COALESCE(get_advInst(e.EMPNO), 0) AS ADV
         FROM sheet_det sd
-        JOIN empmast e on sd.empno=e.EMPNO
-        JOIN sheet s on sd.sheet_id=s.sheet_id
-        WHERE s.mnth = :month1 AND s.yr = :year1";
-    $stmt_empmast = $db->prepare($sql_empmast);
-    $stmt_empmast->bindParam(':month1', $selectedMonth);
-    $stmt_empmast->bindParam(':year1', $selectedYear);  
-    $stmt_empmast->execute();
-    $empmast = $stmt_empmast->fetchAll();
+        JOIN empmast e ON sd.empno = e.EMPNO
+        WHERE sd.sheet_id = :sheet_id");
+    $stmt->execute(array(':sheet_id' => $sheet_id));
+    $employees = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Preparing lwop statment where lwop will be fetched later using the empno provided
-    $sql_sheet_det = "SELECT lwop FROM `sheet_det` WHERE sheet_id = $sheet_id and empno = :empno ";
-    $stmt_sheet_det = $db->prepare($sql_sheet_det);
+    $globalHeads = $db->query("SELECT DESCR, PRCAMTFLAG, ALLREDNFLAG, ALLOWANCE FROM gblall ORDER BY CODE")->fetchAll(PDO::FETCH_ASSOC);
 
-    $stmt_insert = $db->prepare("INSERT INTO trnsmst (EMPNO, sheet_id, basic, MTHYR, lwop, DTE) VALUES (:empno, :sheet_id, COALESCE(:basic, 0), :mnthyr, :lwop, now())");
-
-    // First Loop for Generating TRSNO.
-    foreach ($empmast as $row) {
-        $empno = $row['EMPNO'];
-        $basic = $row['BASIC'];
-
-        $stmt_sheet_det->bindParam(':empno', $empno);
-        $stmt_sheet_det->execute();
-        $lwop = $stmt_sheet_det->fetchColumn();
-        $lwop = ($lwop === null || $lwop === '') ? 0.00 : $lwop;
-
-        $month = getMonthName($selectedMonth);
-        $mnthyr = $month . " " . $selectedYear;
-
-        $sql_check_existence = "SELECT COUNT(*) FROM trnsmst WHERE EMPNO = :empno AND sheet_id = :sheet_id";
-        $stmt_check_existence = $db->prepare($sql_check_existence);
-        $stmt_check_existence->bindParam(':empno', $empno);
-        $stmt_check_existence->bindParam(':sheet_id', $sheet_id);
-        $stmt_check_existence->execute();
-        $data_exists = $stmt_check_existence->fetchColumn() > 0;
-
-        if ($data_exists) {
-            $stmt_update = $db->prepare("UPDATE trnsmst SET basic = :basic, lwop = :lwop, DTE = now() WHERE EMPNO = :empno AND sheet_id = :sheet_id");
-            $stmt_update->bindParam(':empno', $empno);
-            $stmt_update->bindParam(':sheet_id', $sheet_id);
-            $stmt_update->bindParam(':basic', $basic);
-            $stmt_update->bindParam(':lwop', $lwop);
-            $stmt_update->execute();
-        }
-        else {
-            $stmt_insert->bindParam(':empno', $empno);
-            $stmt_insert->bindParam(':sheet_id', $sheet_id);
-            $stmt_insert->bindParam(':basic', $basic);
-            $stmt_insert->bindParam(':mnthyr', $mnthyr);
-            $stmt_insert->bindParam(':lwop', $lwop);
-            $stmt_insert->execute();
-        }
-    }
-    // End of first loop for generating TRNSNO
-
-    $sql_trnsmst = "SELECT TRNSNO, EMPNO, BASIC, LWOP FROM trnsmst where sheet_id = $sheet_id";
-    $stmt_trnsmst = $db->prepare($sql_trnsmst);
-    $stmt_trnsmst->execute();
-    $trnsmst = $stmt_trnsmst->fetchAll();
-
-    $sql_gball = "SELECT * from gblall";
-    $stmt_gball = $db->prepare($sql_gball);
-    $stmt_gball->execute();
-    $gball = $stmt_gball->fetchAll();
-
-    $da = 1;
-    $stmt_indall = $db->prepare("SELECT * from indall WHERE EMPNO = :empno");
-    $stmt_trnsdet1 = $db->prepare("INSERT INTO trnsdet1 (TRNSNO, DESCR, AMOUNT) VALUES (:trnsno, :descr, :amount)");
-    $stmt_trnsdet2 = $db->prepare("INSERT INTO trnsdet2 (TRNSNO, DESCR, AMOUNT) VALUES (:trnsno, :descr, :amount)");
-
-
-    // echo "Starting Calculation";
-    // $stmt_sql = $db->prepare("TRUNCATE TABLE trnsdet1");
-    // $stmt_sql->execute();
-    // $stmt_sql = $db->prepare("TRUNCATE TABLE trnsdet2");
-    // $stmt_sql->execute();
-
-    $sql_state = "SELECT e.STATE FROM trnsmst t JOIN empmast e on t.EMPNO = e.EMPNO WHERE TRNSNO = :trnsno";
-    $stmt_state = $db->prepare($sql_state);
-
-    $daysInMonth = getDaysInMonth($selectedMonth, $selectedYear);
-
-    // Global Allowance and Deduction Calculation Block
-    foreach ($trnsmst as $row) {
-        $trnsno = $row['TRNSNO'];
-        $basic = $row['BASIC'];
-        $empno = $row['EMPNO'];
-        $lwopNo = $row['LWOP'];
-
-        $stmt_state->bindParam(':trnsno', $trnsno);
-        $stmt_state->execute();
-        $state = $stmt_state->fetchColumn();
-
-        foreach ($gball as $row) {
-            $tmp = $row['DESCR'];
-            $allrednflag = $row['ALLREDNFLAG'];
-            $allowance = $row['ALLOWANCE'];
-
-            // Calculation is based on Percentage and not the actual amount
-            if ($allrednflag == "a") {
-                if ($tmp == "VDA") {
-                    $amount = round($basic * ($allowance / 100));
-                    $da = $amount;
-                } else {
-                    $amount = round($basic * ($allowance / 100));
-                }
-                $stmt_insert = $stmt_trnsdet1;
-            } elseif ($allrednflag == "d") {
-                $lwop_amt = ($basic + $da) * $lwopNo / $daysInMonth;
-                if ($tmp == "PF" && $basic > $pfceil) {
-                    $pf_base = $basic + $da - $lwop_amt;
-                    $amount = round($pf_base * $allowance / 100);
-                } else {
-                    $amount = round($pfceil * $allowance / 100);
-                }
-                $stmt_insert = $stmt_trnsdet2;
-            }
-
-            // Check data exists in trnsdet1 or trnsdet2
-            $sql_check = "SELECT COUNT(*) FROM " . ($allrednflag == "a" ? "trnsdet1" : "trnsdet2") . " WHERE TRNSNO = :trnsno AND DESCR = :descr";
-            $stmt_check = $db->prepare($sql_check);
-            $stmt_check->bindParam(':trnsno', $trnsno);
-            $stmt_check->bindParam(':descr', $tmp);
-            $stmt_check->execute();
-            $exists = $stmt_check->fetchColumn() > 0;
-
-            if ($exists) {
-                // Update table
-                $sql_update = "UPDATE " . ($allrednflag == "a" ? "trnsdet1" : "trnsdet2") . " SET AMOUNT = :amount WHERE TRNSNO = :trnsno AND DESCR = :descr";
-                $stmt_update = $db->prepare($sql_update);
-                $stmt_update->bindParam(':amount', $amount);
-                $stmt_update->bindParam(':trnsno', $trnsno);
-                $stmt_update->bindParam(':descr', $tmp);
-                $stmt_update->execute();
-            } else {
-                // Insert in table
-                $stmt_insert->bindParam(':trnsno', $trnsno);
-                $stmt_insert->bindParam(':descr', $tmp);
-                $stmt_insert->bindParam(':amount', $amount);
-                $stmt_insert->execute();
-            }
-        }
-        // Individual Allowance and Deduction Calculation Block
-        $stmt_indall->bindParam(':empno', $empno);
-        $stmt_indall->execute();
-        $indall_result = $stmt_indall->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($indall_result as $row) {
-            $tmp = $row['DESCR'];
-            $prcamtflag = $row['PRCAMTFLAG'];
-            $allrednflag = $row['ALLREDNFLAG'];
-            $allowance = $row['ALLOWANCE'];
-            // If PRCAMTFLAG contains % then calculate with % else take the actual amount for calculation
-            if ($prcamtflag == "%") {
-                $amount = round($basic * $allowance / 100);
-            } else {
-                $amount = round($allowance);
-            }
-
-            $stmt_insert = $allrednflag == "a" ? $stmt_trnsdet1 : $stmt_trnsdet2;
-
-            // Check data exists in trnsdet1 or trnsdet2
-            $sql_check = "SELECT COUNT(*) FROM " . ($allrednflag == "a" ? "trnsdet1" : "trnsdet2") . " WHERE TRNSNO = :trnsno AND DESCR = :descr";
-            $stmt_check = $db->prepare($sql_check);
-            $stmt_check->bindParam(':trnsno', $trnsno);
-            $stmt_check->bindParam(':descr', $tmp);
-            $stmt_check->execute();
-            $exists = $stmt_check->fetchColumn() > 0;
-
-            if ($exists) {
-                // Update data
-                $sql_update = "UPDATE " . ($allrednflag == "a" ? "trnsdet1" : "trnsdet2") . " SET AMOUNT = :amount WHERE TRNSNO = :trnsno AND DESCR = :descr";
-                $stmt_update = $db->prepare($sql_update);
-                $stmt_update->bindParam(':amount', $amount);
-                $stmt_update->bindParam(':trnsno', $trnsno);
-                $stmt_update->bindParam(':descr', $tmp);
-                $stmt_update->execute();
-            } else {
-                // Insert in data
-                $stmt_insert->bindParam(':trnsno', $trnsno);
-                $stmt_insert->bindParam(':descr', $tmp);
-                $stmt_insert->bindParam(':amount', $amount);
-                $stmt_insert->execute();
-            }
-        }
-        
-        // Additional Calculation and Update Block
-        $daysInMonth = getDaysInMonth($selectedMonth, $selectedYear);
-        $sql_summary = "
-        SELECT t.TRNSNO,
-            IFNULL(MAX(CASE WHEN t1.DESCR='DA' THEN t1.amount END), 0) AS DA,
-            IFNULL(MAX(CASE WHEN t1.DESCR='HRA' THEN t1.amount END), 0) AS HRA,
-            IFNULL(MAX(CASE WHEN t1.DESCR='TA' THEN t1.amount END), 0) AS TA,
-            IFNULL(MAX(CASE WHEN t1.DESCR='SPL' THEN t1.amount END), 0) AS SPL,
-            IFNULL(MAX(CASE WHEN t2.DESCR='PF' THEN t2.amount END), 0) AS PF,
-            IFNULL(MAX(CASE WHEN t2.DESCR='ESIC' THEN t2.amount END), 0) AS ESIC,
-            IFNULL(MAX(CASE WHEN t2.DESCR='iTax' THEN t2.amount END), 0) AS iTax,
-            IFNULL(MAX(CASE WHEN t1.DESCR='HRA' THEN t1.amount END), 0) +
-            IFNULL(MAX(CASE WHEN t1.DESCR='SPL' THEN t1.amount END), 0) +
-            IFNULL(MAX(CASE WHEN t1.DESCR='LSA' THEN t1.amount END), 0) + t.gross AS total_earning,
-            ROUND(IFNULL(MAX(CASE WHEN t2.DESCR='iTax' THEN t2.amount END), 0) +
-            IFNULL(MAX(CASE WHEN t2.DESCR='PF' THEN t2.amount END), 0) +
-            IFNULL(MAX(CASE WHEN t2.DESCR='ESIC' THEN t2.amount END), 0) +
-            IFNULL(ROUND((t.lwop / :daysInMonth) * (IFNULL(MAX(CASE WHEN t1.DESCR='DA' THEN t1.amount END), 0) + t.basic), 2),0),0) AS total_deduction,
-            ROUND(IFNULL(ROUND((t.lwop / :daysInMonth) * (IFNULL(MAX(CASE WHEN t1.DESCR='DA' THEN t1.amount END), 0) + t.basic),0),0),0) AS lwopamt,
-            IFNULL(ROUND(IFNULL(MAX(CASE WHEN t1.DESCR='HRA' THEN t1.amount END), 0) + t.MNTHSAL,0),0) AS netAmt,
-            IFNULL(get_advInst(t.EMPNO), 0) AS advAmt,
-            IFNULL(get_lsaAmt(t.EMPNO), 0) AS LSA
-        FROM trnsmst t
-        JOIN trnsdet1 t1 ON t.TRNSNO = t1.TRNSNO
-        JOIN trnsdet2 t2 ON t.TRNSNO = t2.TRNSNO
-        WHERE t.sheet_id = :sheet_id
-        GROUP BY t.TRNSNO";
-
-        $stmt_summary = $db->prepare($sql_summary);
-        $stmt_summary->execute([':daysInMonth'=>$daysInMonth, ':sheet_id'=>$sheet_id]);
-        $summaries = $stmt_summary->fetchAll(PDO::FETCH_ASSOC);
-
-        $update_stmt = $db->prepare("UPDATE trnsmst SET DA=:DA, HRA=:HRA, TA=:TA, SPL=:SPL, PF=:PF, ESIC=:ESIC, iTax=:iTax, total_earning=:total_earning, total_deduction=:total_deduction, lwopamt=:lwopamt, netAmt=:netAmt, advAmt=:advAmt, LSA=:LSA WHERE TRNSNO=:TRNSNO");
-        foreach($summaries as $row){
-            $update_stmt->execute([
-                ':DA'=>$row['DA'], ':HRA'=>$row['HRA'], ':TA'=>$row['TA'], ':SPL'=>$row['SPL'], ':PF'=>$row['PF'], ':ESIC'=>$row['ESIC'], ':iTax'=>$row['iTax'],
-                ':total_earning'=>$row['total_earning'], ':total_deduction'=>$row['total_deduction'], ':lwopamt'=>$row['lwopamt'], ':netAmt'=>$row['netAmt'],
-                ':advAmt'=>$row['advAmt'], ':LSA'=>$row['LSA'], ':TRNSNO'=>$row['TRNSNO']
-            ]);
-        }
-        // Additional Calculation and Update Block End
-
-        $daysInMonth = getDaysInMonth($selectedMonth, $selectedYear);
-        $stmt_update_salary = $db->prepare("CALL monthsal(:trnsno, :sheet_id, :daysInMonth, :end_id, :empno)");
-        $stmt_update_salary->bindParam(':trnsno', $trnsno);
-        $stmt_update_salary->bindParam(':sheet_id', $sheet_id);
-        $stmt_update_salary->bindParam(':end_id', $end_id);
-        $stmt_update_salary->bindParam(':empno', $empno);
-        $stmt_update_salary->bindParam(':daysInMonth', $daysInMonth);
-        $stmt_update_salary->execute();
-
-        $stmt_advPay = $db->prepare("CALL sp_advPayment(:empNo)");
-        $stmt_advPay->bindParam(':empNo', $empno);
-        $stmt_advPay->execute();
+    $stmt = $db->prepare("
+        SELECT i.EMPNO, i.DESCR, i.PRCAMTFLAG, i.ALLREDNFLAG, i.ALLOWANCE
+        FROM indall i
+        JOIN sheet_det sd ON sd.empno = i.EMPNO AND sd.sheet_id = :sheet_id
+        ORDER BY i.id");
+    $stmt->execute(array(':sheet_id' => $sheet_id));
+    $individualHeads = array();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $individualHeads[$row['EMPNO']][] = $row;
     }
 
-    $response = array(
-        'msg' => 'Querry Executed Successfully', 'status' => 200,
-        'month' => $selectedMonth, 'year' => $selectedYear,
-    );
-    header('Content-Type: application/json');
-    echo json_encode($response);
+    $stmt = $db->prepare("SELECT EMPNO, TRNSNO FROM trnsmst WHERE sheet_id = :sheet_id");
+    $stmt->execute(array(':sheet_id' => $sheet_id));
+    $trnsnoByEmp = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    $db->beginTransaction();
+
+    // One trnsmst row per employee per month
+    $stmt_insert = $db->prepare("INSERT INTO trnsmst (EMPNO, sheet_id, basic, MTHYR, lwop, DTE) VALUES (:empno, :sheet_id, :basic, :mnthyr, :lwop, NOW())");
+    foreach ($employees as $emp) {
+        if (!isset($trnsnoByEmp[$emp['EMPNO']])) {
+            $stmt_insert->execute(array(':empno' => $emp['EMPNO'], ':sheet_id' => $sheet_id, ':basic' => $emp['BASIC'], ':mnthyr' => $mnthyr, ':lwop' => $emp['LWOP']));
+            $trnsnoByEmp[$emp['EMPNO']] = $db->lastInsertId();
+        }
+    }
+
+    // Rebuild this month's lines so removed components don't linger
+    foreach (array('trnsdet1', 'trnsdet2') as $table) {
+        $db->prepare("DELETE d FROM $table d JOIN trnsmst t ON d.TRNSNO = t.TRNSNO WHERE t.sheet_id = :sheet_id")
+            ->execute(array(':sheet_id' => $sheet_id));
+    }
+
+    $earningLines = array();
+    $deductionLines = array();
+    $stmt_update = $db->prepare("
+        UPDATE trnsmst SET basic = :basic, lwop = :lwop, DTE = NOW(),
+            DA = :DA, HRA = :HRA, TA = :TA, SPL = :SPL, PF = :PF, ESIC = :ESIC, iTax = :iTax,
+            LSA = :LSA, lwopamt = :lwopamt, advAmt = :advAmt, pfsal = :PF,
+            gross = :gross, total_earning = :gross, total_deduction = :total_deduction,
+            netAmt = :net, MNTHSAL = :mnthsal
+        WHERE TRNSNO = :trnsno");
+
+    foreach ($employees as $emp) {
+        $trnsno = $trnsnoByEmp[$emp['EMPNO']];
+        $basic = (float) $emp['BASIC'];
+        $empIndividual = isset($individualHeads[$emp['EMPNO']]) ? $individualHeads[$emp['EMPNO']] : array();
+
+        $earnings = 0;
+        $deductions = 0;
+        $amounts = array();
+        // foreach (employeeHeads($globalHeads, $empIndividual) as $key => $head) {
+        //     $amount = round($head['percent'] ? $basic * $head['value'] / 100 : $head['value']);
+        //     $amounts[$key] = $amount;
+        //     if ($head['type'] === 'a') {
+        //         $earnings += $amount;
+        //         $earningLines[] = array($trnsno, $head['name'], $amount);
+        //     } else {
+        //         $deductions += $amount;
+        //         $deductionLines[] = array($trnsno, $head['name'], $amount);
+        //     }
+        // }
+
+        $heads = employeeHeads($globalHeads, $empIndividual);
+
+        // Pass 1: allowances (VDA...), so their amounts are known before deductions
+        foreach ($heads as $key => $head) {
+            if ($head['type'] !== 'a') {
+                continue;
+            }
+            $amount = round($head['percent'] ? $basic * $head['value'] / 100 : $head['value'], 2);
+            $amounts[$key] = $amount;
+            $earnings += $amount;
+            $earningLines[] = array($trnsno, $head['name'], $amount);
+        }
+
+        // Pass 2: deductions. PF is a % of (basic + VDA); other % deductions stay a % of basic.
+        $vda = isset($amounts['VDA']) ? $amounts['VDA'] : 0;
+        foreach ($heads as $key => $head) {
+            if ($head['type'] !== 'd') {
+                continue;
+            }
+            $base = ($key === 'PF') ? $basic + $vda : $basic;
+            $amount = round($head['percent'] ? $base * $head['value'] / 100 : $head['value'], 2);
+            $amounts[$key] = $amount;
+            $deductions += $amount;
+            $deductionLines[] = array($trnsno, $head['name'], $amount);
+        }
+
+        $advance = (float) $emp['ADV'];
+        if ($advance > 0) {
+            $deductionLines[] = array($trnsno, 'Advance', $advance);
+        }
+
+        $lsa = (float) $emp['LSA'];
+        $lwopAmt = round($basic * (float) $emp['LWOP'] / $daysInMonth, 2);
+        $gross = $basic + $lsa + $earnings;
+        $grossDeduction = $deductions + $advance + $lwopAmt;
+        $net = $gross - $grossDeduction;
+
+        // Fixed columns are still read by the reports; fill them from the matching heads
+        $col = function ($name) use ($amounts) {
+            return isset($amounts[$name]) ? $amounts[$name] : 0;
+        };
+        $stmt_update->execute(array(
+            ':basic' => $basic, ':lwop' => $emp['LWOP'],
+            ':DA' => $col('DA') ?: $col('VDA'), ':HRA' => $col('HRA'), ':TA' => $col('TA'), ':SPL' => $col('SPL'),
+            ':PF' => $col('PF'), ':ESIC' => $col('ESIC'), ':iTax' => $col('ITAX'),
+            ':LSA' => $lsa, ':lwopamt' => $lwopAmt, ':advAmt' => $advance,
+            ':gross' => $gross, ':total_deduction' => $grossDeduction,
+            ':net' => $net, ':mnthsal' => max($net, 0), // MNTHSAL is unsigned
+            ':trnsno' => $trnsno,
+        ));
+    }
+
+    insertLines($db, 'trnsdet1', $earningLines);
+    insertLines($db, 'trnsdet2', $deductionLines);
+
+    // Record this month's advance instalments
+    $stmt_advPay = $db->prepare("CALL sp_advPayment(:empNo)");
+    foreach ($employees as $emp) {
+        if ($emp['ADV'] > 0) {
+            $stmt_advPay->execute(array(':empNo' => $emp['EMPNO']));
+            $stmt_advPay->closeCursor();
+        }
+    }
+
+    $db->commit();
+
+    respond(200, 'Querry Executed Successfully', array(
+        'month' => $selectedMonth, 'year' => $selectedYear, 'employees' => count($employees),
+    ));
 } catch (PDOException $e) {
-    $errorMessage = $e->getMessage();
-    if (strpos($errorMessage, 'No Month Data') !== false) {
-        $response = array(
-            'msg' => 'Query Failed', 'status' => 500,
-            'month' => $selectedMonth, 'year' => $selectedYear,
-        );
-        header('Content-Type: application/json');
-        echo json_encode($response);
-    } else {
-        print "Error!: " . $errorMessage . "<br/>";
-        die();
+    if (isset($db) && $db->inTransaction()) {
+        $db->rollBack();
     }
-} ?>
+    respond(500, 'Query Failed: ' . $e->getMessage(), array('month' => $selectedMonth, 'year' => $selectedYear));
+}
