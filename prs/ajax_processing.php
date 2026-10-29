@@ -10,11 +10,16 @@
  *   - a head is either '%' of basic or a fixed amount; a head with no value is 0
  *   - 'a' heads are earnings (trnsdet1), 'd' heads are deductions (trnsdet2)
  *
+ *   - open loans / advances (loanmast) add their principal and interest heads (PF Loan, PF Int...);
+ *     a hand-typed head with the same name wins over the calculated amount, and whatever is
+ *     deducted is recorded as that month's installment (loandet)
+ *
  *   gross pay       = basic + LSA + all earnings
- *   gross deduction = all deductions + advance instalment + LWOP amount (basic / days * LWOP days)
+ *   gross deduction = all deductions + loan instalments + LWOP amount (basic / days * LWOP days)
  *   net pay         = gross pay - gross deduction
  */
 session_start();
+require_once 'includes/loan_calc.php';
 header('Content-Type: application/json');
 
 function respond($status, $msg, $extra = array())
@@ -86,7 +91,7 @@ try {
     // Employees on this month's sheet
     $stmt = $db->prepare("
         SELECT e.EMPNO, COALESCE(e.BASIC, 0) AS BASIC, COALESCE(sd.lwop, 0) AS LWOP,
-            COALESCE(get_lsaAmt(e.EMPNO), 0) AS LSA, COALESCE(get_advInst(e.EMPNO), 0) AS ADV
+            COALESCE(get_lsaAmt(e.EMPNO), 0) AS LSA
         FROM sheet_det sd
         JOIN empmast e ON sd.empno = e.EMPNO
         WHERE sd.sheet_id = :sheet_id");
@@ -110,6 +115,38 @@ try {
     $stmt->execute(array(':sheet_id' => $sheet_id));
     $trnsnoByEmp = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
+    // Loans running this month: open ones taken by month end, plus any already deducted in this
+    // month (re-processing a month that closed a loan)
+    $monthEnd = date('Y-m-t', mktime(0, 0, 0, $selectedMonth, 1, $selectedYear));
+    $loanTypes = array();
+    foreach ($db->query("SELECT * FROM loantype")->fetchAll(PDO::FETCH_ASSOC) as $type) {
+        $loanTypes[$type['CODE']] = $type;
+    }
+    $stmt = $db->prepare("
+        SELECT l.* FROM loanmast l
+        JOIN sheet_det sd ON sd.empno = l.EMPNO AND sd.sheet_id = :sheet_id
+        WHERE l.AMT > 0 AND (l.DTE IS NULL OR l.DTE <= :month_end)
+            AND (COALESCE(l.FLAG, 0) = 0 OR EXISTS (SELECT 1 FROM loandet ld WHERE ld.LNO = l.LNO AND ld.SHEET_ID = :sheet_id2))
+        ORDER BY l.DTE, l.LNO");
+    $stmt->execute(array(':sheet_id' => $sheet_id, ':sheet_id2' => $sheet_id, ':month_end' => $monthEnd));
+    $loansByEmp = array();
+    $loanHistory = array();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $loan) {
+        $type = isset($loanTypes[$loan['LTYPE']]) ? $loanTypes[$loan['LTYPE']] : $loanTypes['ADV'];
+        $loansByEmp[(int) $loan['EMPNO']][] = array('loan' => loanNormalize($loan, $type), 'type' => $type);
+        $loanHistory[$loan['LNO']] = array();
+    }
+    if ($loanHistory) {
+        $stmt = $db->prepare("
+            SELECT * FROM loandet
+            WHERE LNO IN (" . implode(',', array_fill(0, count($loanHistory), '?')) . ") AND (SHEET_ID IS NULL OR SHEET_ID <> ?)
+            ORDER BY LNO, SLNO");
+        $stmt->execute(array_merge(array_keys($loanHistory), array($sheet_id)));
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $loanHistory[(int) $row['LNO']][] = $row;
+        }
+    }
+
     $db->beginTransaction();
 
     // One trnsmst row per employee per month
@@ -126,6 +163,13 @@ try {
         $db->prepare("DELETE d FROM $table d JOIN trnsmst t ON d.TRNSNO = t.TRNSNO WHERE t.sheet_id = :sheet_id")
             ->execute(array(':sheet_id' => $sheet_id));
     }
+
+    // This month's installments are rebuilt as well
+    $db->prepare("DELETE FROM loandet WHERE SHEET_ID = :sheet_id")->execute(array(':sheet_id' => $sheet_id));
+    $stmt_loanInst = $db->prepare("
+        INSERT INTO loandet (LNO, SLNO, DTE, SHEET_ID, INSTAMT, PRIN, INTAMT, FLAG, IS_MANUAL)
+        VALUES (:lno, :slno, :dte, :sheet_id, :instamt, :prin, :intamt, 1, :manual)");
+    $stmt_loanFlag = $db->prepare("UPDATE loanmast SET FLAG = :flag WHERE LNO = :lno");
 
     $earningLines = array();
     $deductionLines = array();
@@ -183,15 +227,63 @@ try {
             $deductionLines[] = array($trnsno, $head['name'], $amount);
         }
 
-        $advance = (float) $emp['ADV'];
-        if ($advance > 0) {
-            $deductionLines[] = array($trnsno, 'Advance', $advance);
+        // Pass 3: loan installments. A head typed by hand (already deducted above) replaces the
+        // calculated amount; it is credited to the oldest open loan of that type.
+        $loanLines = array();
+        $manualUsed = array();
+        $empLoans = isset($loansByEmp[(int) $emp['EMPNO']]) ? $loansByEmp[(int) $emp['EMPNO']] : array();
+        foreach ($empLoans as $item) {
+            $loan = $item['loan'];
+            $history = $loanHistory[$loan['LNO']];
+            $state = loanState($loan, $history);
+            if (loanIsClosed($loan, $state)) {
+                $stmt_loanFlag->execute(array(':flag' => 1, ':lno' => $loan['LNO']));
+                continue;
+            }
+            $due = loanNextInstallment($loan, $state);
+            $paid = array('prin' => 0.0, 'int' => 0.0);
+            $manual = false;
+            foreach (array('prin' => $item['type']['PRIN_HEAD'], 'int' => $item['type']['INT_HEAD']) as $part => $head) {
+                $head = trim((string) $head);
+                if ($head === '') {
+                    continue;
+                }
+                $key = strtoupper($head);
+                if (isset($amounts[$key])) {
+                    $manual = true;
+                    $paid[$part] = isset($manualUsed[$key]) ? 0.0 : (float) $amounts[$key];
+                    $manualUsed[$key] = true;
+                } elseif ($due[$part] > 0) {
+                    $paid[$part] = $due[$part];
+                    $loanLines[$head] = (isset($loanLines[$head]) ? $loanLines[$head] : 0) + $due[$part];
+                }
+            }
+
+            if ($paid['prin'] + $paid['int'] > 0) {
+                $lastSlno = $history ? (int) max(array_column($history, 'SLNO')) : 0;
+                $stmt_loanInst->execute(array(
+                    ':lno' => $loan['LNO'], ':slno' => $lastSlno + 1, ':dte' => $monthEnd, ':sheet_id' => $sheet_id,
+                    ':instamt' => $paid['prin'] + $paid['int'], ':prin' => $paid['prin'], ':intamt' => $paid['int'],
+                    ':manual' => $manual ? 1 : 0,
+                ));
+                $state = loanApply($loan, $state, $paid['prin'], $paid['int']);
+            }
+            $stmt_loanFlag->execute(array(':flag' => loanIsClosed($loan, $state) ? 1 : 0, ':lno' => $loan['LNO']));
         }
+
+        $loanTotal = 0;
+        foreach ($loanLines as $head => $amount) {
+            $amount = round($amount, 2);
+            $amounts[strtoupper($head)] = $amount;
+            $loanTotal += $amount;
+            $deductionLines[] = array($trnsno, $head, $amount);
+        }
+        $advance = isset($amounts['ADVANCE']) ? $amounts['ADVANCE'] : 0;
 
         $lsa = (float) $emp['LSA'];
         $lwopAmt = round($basic * (float) $emp['LWOP'] / $daysInMonth, 2);
         $gross = $basic + $lsa + $earnings;
-        $grossDeduction = $deductions + $advance + $lwopAmt;
+        $grossDeduction = $deductions + $loanTotal + $lwopAmt;
         $net = $gross - $grossDeduction;
 
         // Fixed columns are still read by the reports; fill them from the matching heads
@@ -211,15 +303,6 @@ try {
 
     insertLines($db, 'trnsdet1', $earningLines);
     insertLines($db, 'trnsdet2', $deductionLines);
-
-    // Record this month's advance instalments
-    $stmt_advPay = $db->prepare("CALL sp_advPayment(:empNo)");
-    foreach ($employees as $emp) {
-        if ($emp['ADV'] > 0) {
-            $stmt_advPay->execute(array(':empNo' => $emp['EMPNO']));
-            $stmt_advPay->closeCursor();
-        }
-    }
 
     $db->commit();
 

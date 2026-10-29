@@ -5,6 +5,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 require_once 'includes/dbconn.php';
+require_once 'includes/org.php';
 $selectedMonth = isset($_GET['month']) ? $_GET['month'] : '';
 $selectedYear = isset($_GET['year']) ? $_GET['year'] : '';
 function getMonthName($num)
@@ -82,8 +83,8 @@ $monthYear = date('F, Y');
 $sheet->setTitle("ESIC " . $monthYear);
 
 
-$sheet->setCellValue('A1', 'JAMSHEDPUR PUBLIC SCHOOL');
-$sheet->setCellValue('A2', 'PANCHAVATI ROAD, NEW BARIDIH, JAMSHEDPUR - 831 017');
+$sheet->setCellValue('A1', ORG_NAME);
+$sheet->setCellValue('A2', ORG_ADDRESS);
 $sheet->setCellValue('A4', 'STATEMENT OF ESIC FOR THE MONTH OF ' . $month . ' - '.  $selectedYear);
 $sheet->mergeCells('A1:I1');
 $sheet->mergeCells('A2:I2');

@@ -4086,16 +4086,19 @@ return function (App $app) {
 		$group->post('', function (Request $request, Response $response, $args) {
 			try {
 				$users = $request->getParsedBody();
-				$sql = "INSERT INTO loanmast(EMPNO, DTE, DESCR, AMT, RATE, NOINST, FLAG)
-            VALUES(:txt_empno, :txt_date, :txt_descr, :txt_amount, :txt_intRate, :txt_nofinst, :txt_descr)";
+				$sql = "INSERT INTO loanmast(EMPNO, LTYPE, DTE, DESCR, AMT, RATE, METHOD, NOINST, INT_MONTHS, FLAG)
+            VALUES(:txt_empno, :txt_ltype, :txt_date, :txt_descr, :txt_amount, :txt_intRate, :txt_method, :txt_nofinst, :txt_intMonths, 0)";
 				$db = getconn();
 				$stmt = $db->prepare($sql);
-				$stmt->bindParam(":txt_empno", $users['empno']);
-				$stmt->bindParam(":txt_date", $users['date']);
-				$stmt->bindParam(":txt_amount", $users['amount']);
-				$stmt->bindParam(":txt_descr", $users['descr']);
-				$stmt->bindParam(":txt_intRate", $users['intRate']);
-				$stmt->bindParam(":txt_nofinst", $users['nofinst']);
+				$stmt->bindValue(":txt_empno", $users['empno']);
+				$stmt->bindValue(":txt_ltype", !empty($users['ltype']) ? $users['ltype'] : 'ADV');
+				$stmt->bindValue(":txt_date", $users['date']);
+				$stmt->bindValue(":txt_amount", $users['amount']);
+				$stmt->bindValue(":txt_descr", $users['descr']);
+				$stmt->bindValue(":txt_intRate", !empty($users['intRate']) ? $users['intRate'] : 0);
+				$stmt->bindValue(":txt_method", !empty($users['method']) ? $users['method'] : 'NONE');
+				$stmt->bindValue(":txt_nofinst", $users['nofinst']);
+				$stmt->bindValue(":txt_intMonths", !empty($users['intMonths']) ? $users['intMonths'] : null);
 				$stmt->execute();
 				if ($stmt->rowCount() > 0)
 					$msg = "success";
@@ -4120,16 +4123,20 @@ return function (App $app) {
 				$body = $request->getBody();
 				$db = getconn();
 				$users = $request->getParsedBody();
-				$sql = "UPDATE loanmast SET dte=:txt_date, amt=:txt_amount, descr=:txt_descr, rate=:txt_intRate, noinst=:txt_nofinst, FLAG=:txt_cleared WHERE lno=:txt_lno";
+				$sql = "UPDATE loanmast SET ltype=:txt_ltype, dte=:txt_date, amt=:txt_amount, descr=:txt_descr, rate=:txt_intRate, method=:txt_method,
+					noinst=:txt_nofinst, int_months=:txt_intMonths, FLAG=:txt_cleared WHERE lno=:txt_lno";
 				$stmt = $db->prepare($sql);
-				$stmt->bindParam(":txt_lno", $users['lno']);
-				$stmt->bindParam(":txt_date", $users['date']);
-				$stmt->bindParam(":txt_amount", $users['amount']);
-				$stmt->bindParam(":txt_descr", $users['descr']);
-				//$stmt->bindParam(":txt_empno", $users['empno']);
-				$stmt->bindParam(":txt_intRate", $users['intRate']);
-				$stmt->bindParam(":txt_nofinst", $users['nofinst']);
-				$stmt->bindParam(":txt_cleared", $users['cleared']);
+				$stmt->bindValue(":txt_lno", $args['code']);
+				$stmt->bindValue(":txt_ltype", !empty($users['ltype']) ? $users['ltype'] : 'ADV');
+				$stmt->bindValue(":txt_date", $users['date']);
+				$stmt->bindValue(":txt_amount", $users['amount']);
+				$stmt->bindValue(":txt_descr", $users['descr']);
+				$stmt->bindValue(":txt_intRate", !empty($users['intRate']) ? $users['intRate'] : 0);
+				$stmt->bindValue(":txt_method", !empty($users['method']) ? $users['method'] : 'NONE');
+				$stmt->bindValue(":txt_nofinst", $users['nofinst']);
+				$stmt->bindValue(":txt_intMonths", !empty($users['intMonths']) ? $users['intMonths'] : null);
+				// An unticked checkbox is not posted at all
+				$stmt->bindValue(":txt_cleared", !empty($users['cleared']) ? 1 : 0);
 				$stmt->execute();
 				if ($stmt->rowCount() > 0)
 					$msg = "success";
@@ -4176,6 +4183,50 @@ return function (App $app) {
 
 	});
 	//End of REST API for Adv Payment entity
+	//Begin REST API for Loan Type entity
+	$app->group("$burl/loantype", function (Group $group) {
+		$group->get('', function (Request $request, Response $response, $args) {
+			try {
+				$db = getconn();
+				$data = $db->query("SELECT * FROM loantype ORDER BY SORT, CODE")->fetchAll(PDO::FETCH_ASSOC);
+				$status = 200;
+			} catch (Exception $e) {
+				$data = array("errmsg" => $e->getMessage());
+				$status = 400;
+			}
+			$response->getBody()->write(json_encode($data));
+			return $response
+				->withHeader('Content-Type', 'application/json')
+				->withStatus($status);
+		});
+
+		$group->put('/{code}', function (Request $request, Response $response, $args) {
+			try {
+				$users = $request->getParsedBody();
+				$method = isset($users['method']) ? $users['method'] : '';
+				if (!in_array($method, array('NONE', 'REDUCING', 'FLAT', 'PRINFIRST'), true)) {
+					throw new Exception("Invalid interest method");
+				}
+				$db = getconn();
+				$stmt = $db->prepare("UPDATE loantype SET METHOD = :method, RATE = :rate, INT_MONTHS = :int_months WHERE CODE = :code");
+				$stmt->bindValue(":method", $method);
+				$stmt->bindValue(":rate", !empty($users['rate']) ? $users['rate'] : 0);
+				$stmt->bindValue(":int_months", !empty($users['intMonths']) ? $users['intMonths'] : null);
+				$stmt->bindValue(":code", $args['code']);
+				$stmt->execute();
+				$data = array("status" => "Ok", "msg" => "Loan type saved");
+				$status = 200;
+			} catch (Exception $e) {
+				$data = array("status" => "Error", "msg" => $e->getMessage());
+				$status = 200;
+			}
+			$response->getBody()->write(json_encode($data));
+			return $response
+				->withHeader('Content-Type', 'application/json')
+				->withStatus($status);
+		});
+	});
+	//End of REST API for Loan Type entity
      //Begin REST API for Daily Report entity
 	$app->group("$burl/dlyreport", function (Group $group) {
 		$group->get('', function (Request $request, Response $response, $args) {

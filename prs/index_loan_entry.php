@@ -9,9 +9,12 @@ if ((!isset($_SESSION['user']))) {
 
 <?php
 include('includes/dbconn.php');
+require_once 'includes/loan_calc.php';
 $stmt = $db->prepare("SELECT EMPNO,NAME from empmast");
 $stmt->execute();
 $empnames = $stmt->fetchAll();
+$loanTypes = $db->query("SELECT * FROM loantype ORDER BY SORT, CODE")->fetchAll(PDO::FETCH_ASSOC);
+$loanMethods = loanMethods();
 ?>
 
 <!DOCTYPE html>
@@ -74,12 +77,15 @@ $empnames = $stmt->fetchAll();
             ?>
             <div class="intro-y flex items-center mt-8">
                 <h2 class="text-lg font-medium mr-auto">
-                    Loan
+                    Loans &amp; Advances
                 </h2>
             </div>
             <button class="btn btn-primary w-20 shadow-md mr-2 mt-5 mb-2 rounded-full"
                 onclick="add_new()" data-tw-toggle="modal"
                 data-tw-target="#header-footer-modal-preview-view">Add
+            </button>
+            <button class="btn btn-outline-primary shadow-md mr-2 mt-5 mb-2 rounded-full loan-admin"
+                data-tw-toggle="modal" data-tw-target="#loantype-modal">Loan Types
             </button>
             <div class="grid grid-cols-12 gap-6 mt-5">
 
@@ -102,15 +108,18 @@ $empnames = $stmt->fetchAll();
                                     <table id="table" class="table table-bordered table-striped w-full" cellpadding="7px">
                                         <thead>
                                             <tr>
-                                                <th class="w-1/12">Loan No</th>
-                                                <th class="w-2/12">Emp Name</th>
-                                                <th class="w-1/12">Date</th>
-                                                <th class="w-1/12">Description</i></th>
-                                                <th class="w-1/12">Amount</th>
-                                                <th class="w-1/12">Rate</th>
-                                                <th class="w-1/12">No of Installments</th>
-                                                <th class="w-1/12">Status</th>
-                                                <th class="w-1/12">Action</th>
+                                                <th>Loan No</th>
+                                                <th>Emp Name</th>
+                                                <th>Type</th>
+                                                <th>Date</th>
+                                                <th>Description</th>
+                                                <th>Amount</th>
+                                                <th>Rate %</th>
+                                                <th>Interest Method</th>
+                                                <th>Tenure (months)</th>
+                                                <th>Balance</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
                                             </tr>
                                         </thead>
                                     </table>
@@ -270,6 +279,14 @@ $empnames = $stmt->fetchAll();
                                         </select>
                                     </div>
                                     <div class="col-span-12 sm:col-span-6">
+                                        <label for="txt_ltype" class="form-label">Loan Type</label>
+                                        <select name="txt_ltype" id="txt_ltype" class="form-control">
+                                            <?php foreach ($loanTypes as $type) { ?>
+                                                <option value="<?= htmlspecialchars($type['CODE']) ?>"><?= htmlspecialchars($type['NAME']) ?></option>
+                                            <?php } ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-6">
                                         <label for="txt_date" class="form-label">Date</label>
                                         <input id="txt_date" name="txt_date" type="date" class="form-control " placeholder="Date">
                                     </div>
@@ -286,37 +303,43 @@ $empnames = $stmt->fetchAll();
                                         <input id="txt_cleared" name="txt_cleared" type="checkbox" value="0" onchange="updateCheckboxValue(this)">
                                     </div>
                                     <div class="col-span-12 sm:col-span-6">
-                                        <label for="txt_intRate" class="form-label">Interest Rate</label>
-                                        <input id="txt_intRate" name="txt_intRate" type="text" class="form-control " placeholder="Rate">
+                                        <label for="txt_nofinst" class="form-label">Tenure (months)</label>
+                                        <input id="txt_nofinst" name="txt_nofinst" type="number" min="1" step="1" class="form-control" placeholder="No of monthly installments">
                                     </div>
-                                    <div class="col-span-12 sm:col-span-6">
-                                        <label for="txt_inst" class="form-label">Installment/Month</label>
-                                        <input id="txt_inst" name="txt_inst" type="text" class="form-control " placeholder="No of Days">
-                                    </div>
-                                    <div class="col-span-12 sm:col-span-6">
-                                        <label for="txt_nofinst" class="form-label">No of Installment</label>
-                                        <!-- <input id="txt_nofinst" name="txt_nofinst" type="text" class="form-control " placeholder="Leave Type"> -->
-                                        <select name="txt_nofinst" id="txt_nofinst" class="form-control">
-                                            <option value="" selected disabled>--Select Installment--</option>
-
-                                            <?php
-                                            // Generate options for numbers 1 to 50
-                                            for ($i = 1; $i <= 50; $i++) {
-                                                echo "<option value='$i'>$i</option>";
-                                            }
-                                            ?>
+                                    <div class="col-span-12 sm:col-span-6 interest-field">
+                                        <label for="txt_method" class="form-label">Interest Method</label>
+                                        <select name="txt_method" id="txt_method" class="form-control">
+                                            <?php foreach ($loanMethods as $code => $label) { ?>
+                                                <option value="<?= $code ?>"><?= $label ?></option>
+                                            <?php } ?>
                                         </select>
                                     </div>
+                                    <div class="col-span-12 sm:col-span-6 interest-field">
+                                        <label for="txt_intRate" class="form-label">Interest Rate (% per year)</label>
+                                        <input id="txt_intRate" name="txt_intRate" type="number" min="0" step="0.01" class="form-control" placeholder="Rate">
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-6" id="intMonthsField">
+                                        <label for="txt_intMonths" class="form-label">Recover Interest Over (months)</label>
+                                        <input id="txt_intMonths" name="txt_intMonths" type="number" min="1" step="1" class="form-control" placeholder="Months after principal is repaid">
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-6">
+                                        <label class="form-label">First Month Deduction</label>
+                                        <div id="firstInst" class="form-control bg-slate-100">-</div>
+                                    </div>
                                     <div class="col-span-12 sm:col-span-12" id="paytbl">
-                                        <label for="txt_paytable" class="form-label">Repayment Table</label>
+                                        <label for="txt_paytable" class="form-label">Repayment Schedule</label>
+                                        <div class="text-xs text-slate-500 mb-2">Paid rows come from processed payrolls ("Manual" = a hand-typed head was deducted instead). Pending rows are projected and update when the loan is edited.</div>
                                         <div class="preview">
                                             <div class="overflow-x-auto">
                                                 <table id="paytable" class="table table-bordered table-striped" style="width:100%">
                                                     <thead>
                                                         <tr>
                                                             <th>Sl No</th>
-                                                            <th>Date</th>
-                                                            <th>Amount</th>
+                                                            <th>Month</th>
+                                                            <th>Principal</th>
+                                                            <th>Interest</th>
+                                                            <th>Total</th>
+                                                            <th>Balance</th>
                                                             <th>Status</th>
                                                         </tr>
                                                     </thead>
@@ -339,6 +362,57 @@ $empnames = $stmt->fetchAll();
                     </div>
                 </div>
                 <!-- END: Modal Content -->
+
+                <!-- BEGIN: Loan Types Modal -->
+                <div id="loantype-modal" class="modal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-xl">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h2 class="font-bold text-base mr-auto">Loan Types</h2>
+                            </div>
+                            <div class="modal-body">
+                                <div class="text-xs text-slate-500 mb-3">Defaults filled in when a new loan of that type is added. Changing them does not change existing loans; edit a loan to change its own method or rate.</div>
+                                <div class="overflow-x-auto">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Type</th>
+                                                <th>Deduction Heads</th>
+                                                <th>Interest Method</th>
+                                                <th>Rate % / year</th>
+                                                <th>Interest Recovery (months)</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($loanTypes as $type) {
+                                                $hasInt = trim((string) $type['INT_HEAD']) !== ''; ?>
+                                                <tr data-code="<?= htmlspecialchars($type['CODE']) ?>">
+                                                    <td><?= htmlspecialchars($type['NAME']) ?></td>
+                                                    <td><?= htmlspecialchars($type['PRIN_HEAD']) . ($hasInt ? ' / ' . htmlspecialchars($type['INT_HEAD']) : '') ?></td>
+                                                    <td>
+                                                        <select class="form-control lt-method" <?= $hasInt ? '' : 'disabled' ?>>
+                                                            <?php foreach ($loanMethods as $code => $label) { ?>
+                                                                <option value="<?= $code ?>" <?= $type['METHOD'] === $code ? 'selected' : '' ?>><?= $label ?></option>
+                                                            <?php } ?>
+                                                        </select>
+                                                    </td>
+                                                    <td><input type="number" min="0" step="0.01" class="form-control lt-rate" value="<?= htmlspecialchars($type['RATE']) ?>" <?= $hasInt ? '' : 'disabled' ?>></td>
+                                                    <td><input type="number" min="1" step="1" class="form-control lt-intmonths" value="<?= htmlspecialchars((string) $type['INT_MONTHS']) ?>" <?= $hasInt ? '' : 'disabled' ?>></td>
+                                                    <td><?php if ($hasInt) { ?><button type="button" class="btn btn-primary btn-sm rounded-full lt-save">Save</button><?php } ?></td>
+                                                </tr>
+                                            <?php } ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" data-tw-dismiss="modal" class="btn btn-outline-secondary w-20 rounded-full">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- END: Loan Types Modal -->
             </div>
 
         </div>
@@ -358,44 +432,126 @@ $empnames = $stmt->fetchAll();
 <script>
     var paytable;
     $(document).ready(function() {
+        const money = function(data) {
+            return Number(data).toFixed(2);
+        };
         paytable = $('#paytable').DataTable({
-            buttons: ['copy', 'excel', 'pdf'],
-            "processing": false,
             "searching": false,
-            "serverSide": true,
+            "ordering": false,
+            "pageLength": 12,
+            "lengthChange": false,
             "ajax": {
                 "url": "ajax_repayment.php",
                 "type": "GET",
                 "data": function(d) {
                     d.lno = $("#txt_lno").val();
-                    console.log("Ajax request data:", d);
                 }
             },
             "columns": [{
-                    "data": null,
-                    "render": function(data, type, row, meta) {
-                        return meta.row + 1;
-                    }
+                    "data": "slno"
                 },
                 {
-                    "data": "dte"
+                    "data": "month"
                 },
                 {
-                    "data": "instamt"
+                    "data": "prin",
+                    "render": money
                 },
                 {
-                    "data": "status",
-                    "render": function(data, type, row) {
-                        return data === 0 ? "Pending" : data === 1 ? "Paid" : "Unknown";
-                    }
+                    "data": "int",
+                    "render": money
+                },
+                {
+                    "data": "total",
+                    "render": money
+                },
+                {
+                    "data": "balance",
+                    "render": money
+                },
+                {
+                    "data": "status"
                 }
             ],
-            "order": [0, "desc"],
+            "createdRow": function(row, data) {
+                if (data.status === 'Pending') $(row).addClass('text-slate-500');
+            }
+        });
+
+        $("#txt_ltype").on("change", function() {
+            applyTypeDefaults();
+            updateLoanForm();
+        });
+        $("#txt_method, #txt_amount, #txt_intRate, #txt_nofinst, #txt_intMonths").on("change input", updateLoanForm);
+
+        $(".lt-save").on("click", function() {
+            const tr = $(this).closest("tr");
+            const code = tr.data("code");
+            $.ajax({
+                url: '../prsApi/loantype/' + code,
+                type: 'PUT',
+                dataType: 'json',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    method: tr.find(".lt-method").val(),
+                    rate: tr.find(".lt-rate").val(),
+                    intMonths: tr.find(".lt-intmonths").val()
+                }),
+                success: function(data) {
+                    if (data.status == "Ok") {
+                        const type = loanTypes.find(t => t.CODE == code);
+                        type.METHOD = tr.find(".lt-method").val();
+                        type.RATE = tr.find(".lt-rate").val();
+                        type.INT_MONTHS = tr.find(".lt-intmonths").val();
+                        Swal.fire({ title: data.msg, icon: 'success', timer: 1200, showConfirmButton: false });
+                    } else {
+                        Swal.fire(data.msg, '', 'error');
+                    }
+                }
+            });
         });
     });
 
     var userId = <?php echo json_encode(isset($_SESSION['user']) ? $_SESSION['user'] : null); ?>;
     var isAdmin = userId === 'Admin';
+    var loanTypes = <?php echo json_encode($loanTypes); ?>;
+    if (!isAdmin) $(".loan-admin").hide();
+
+    function currentType() {
+        return loanTypes.find(t => t.CODE == $("#txt_ltype").val()) || {};
+    }
+
+    // New loan: take rate / method from the loan type's defaults
+    function applyTypeDefaults() {
+        const type = currentType();
+        $("#txt_method").val(type.METHOD || 'NONE');
+        $("#txt_intRate").val(type.RATE || 0);
+        $("#txt_intMonths").val(type.INT_MONTHS || '');
+    }
+
+    // Shows only the fields that apply and previews the first month's deduction
+    function updateLoanForm() {
+        const type = currentType();
+        const hasInt = !!(type.INT_HEAD && type.INT_HEAD.trim());
+        $(".interest-field").toggle(hasInt);
+        if (!hasInt) $("#txt_method").val('NONE');
+        const method = $("#txt_method").val();
+        $("#intMonthsField").toggle(hasInt && method === 'PRINFIRST');
+
+        const amt = parseFloat($("#txt_amount").val()) || 0;
+        const n = parseInt($("#txt_nofinst").val()) || 0;
+        const rate = parseFloat($("#txt_intRate").val()) || 0;
+        if (!amt || !n) {
+            $("#firstInst").text('-');
+            return;
+        }
+        const prin = Math.min(amt, Math.round(amt / n * 100) / 100);
+        const int = (method === 'REDUCING' || method === 'FLAT') ? Math.round(amt * rate / 1200 * 100) / 100 : 0;
+        let text = (type.PRIN_HEAD || 'Principal') + ' ' + prin.toFixed(2);
+        if (hasInt) text += ' + ' + type.INT_HEAD + ' ' + int.toFixed(2) + ' = ' + (prin + int).toFixed(2);
+        if (method === 'PRINFIRST') text += ' (interest after principal)';
+        $("#firstInst").text(text);
+    }
     var dtable = $('#table').DataTable({
         buttons: ['copy', 'excel', 'pdf'],
         "processing": true,
@@ -411,6 +567,9 @@ $empnames = $stmt->fetchAll();
                 "data": "name"
             },
             {
+                "data": "ltype"
+            },
+            {
                 "data": "dte"
             },
             {
@@ -423,16 +582,25 @@ $empnames = $stmt->fetchAll();
                 "data": "rate"
             },
             {
+                "data": "method"
+            },
+            {
                 "data": "noinst"
             },
             {
+                "data": "balance",
+                "orderable": false
+            },
+            {
                 "data": "status",
+                "orderable": false,
                 "render": function(data, type, row) {
                     return data === 0 || data === null ? "Pending" : data === 1 ? "Cleared" : data;
                 }
             },
             isAdmin ? {
-                "data": "action"
+                "data": "action",
+                "orderable": false
             } : {
                 "data": "action",
                 "visible": false
@@ -463,49 +631,47 @@ $empnames = $stmt->fetchAll();
         $("#paytbl").hide();
         $("#txt_id").removeAttr("readonly");
         $('#frm_user').trigger("reset");
+        $("#txt_lno").val('');
+        $("#txt_ltype").prop("disabled", false);
+        applyTypeDefaults();
+        updateLoanForm();
     }
 
+    function loanFormJSON() {
+        const json = convertFormToJSON($("#frm_user"));
+        json.ltype = $("#txt_ltype").val(); // disabled selects are not serialized
+        json.method = $("#txt_method").val();
+        return json;
+    }
+
+    function saveResult(data) {
+        if (data.status == "Ok") {
+            dtable.draw();
+        } else {
+            Swal.fire(data.msg, '', 'error');
+        }
+    }
 
     $("#btn_update").on("click", function() {
-        const form = $("#frm_user");
-        const json = convertFormToJSON(form);
-        console.log(json);
         var code = $("#txt_lno").val();
         $.ajax({
             url: '../prsApi/advpayment/' + code,
             type: 'PUT',
             dataType: 'json',
             contentType: 'application/json',
-            success: function(data) {
-                if (data.status == "Ok") {
-                    $("#header-footer-modal-preview").hide();
-                    dtable.draw();
-
-                }
-                //console.log("..."+data);
-            },
-
-            data: JSON.stringify(json)
+            success: saveResult,
+            data: JSON.stringify(loanFormJSON())
         });
     });
 
     $("#btn_save").on("click", function() {
-        const form = $("#frm_user");
-        const json = convertFormToJSON(form);
-        //console.log(json);
         $.ajax({
             url: '../prsApi/advpayment',
             type: 'POST',
             dataType: 'json',
             contentType: 'application/json',
-            success: function(data) {
-                if (data.status == "Ok") {
-                    $("#header-footer-modal-preview").hide();
-                    dtable.draw();
-                }
-                //console.log("..."+data);
-            },
-            data: JSON.stringify(json)
+            success: saveResult,
+            data: JSON.stringify(loanFormJSON())
         });
     });
 
@@ -523,15 +689,18 @@ $empnames = $stmt->fetchAll();
             success: function(res) {
                 $("#txt_empno").val(res.EMPNO);
                 $("#txt_empName").val(res.NAME);
+                $("#txt_ltype").val(res.LTYPE).prop("disabled", true); // installments already use the type's heads
                 $("#txt_date").val(res.DTE);
                 $("#txt_descr").val(res.DESCR);
                 $("#txt_amount").val(res.AMT);
                 $("#txt_cleared").val(res.FLAG);
                 $("#txt_intRate").val(res.RATE);
-                $("#txt_inst").val(res.RATE);
+                $("#txt_method").val(res.METHOD);
                 $("#txt_nofinst").val(res.NOINST);
-                $("#txt_cleared").prop("checked", res.FLAG === 1);
+                $("#txt_intMonths").val(res.INT_MONTHS || '');
+                $("#txt_cleared").prop("checked", res.FLAG == 1);
                 $("#txt_lno").val(res.LNO);
+                updateLoanForm();
                 reloadPaytable();
             }
 
@@ -539,7 +708,7 @@ $empnames = $stmt->fetchAll();
     }
 
 
-    function remove_data(empno) {
+    function remove_data(code) {
         Swal.fire({
             title: 'Are you sure to Delete?',
             text: 'You won\'t be able to revert this!',

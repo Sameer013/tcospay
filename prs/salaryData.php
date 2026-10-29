@@ -10,6 +10,7 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 
 require_once 'includes/dbconn.php';
+require_once 'includes/org.php';
 require_once 'includes/payroll_report.php';
 
 list($selectedMonth, $selectedYear) = reportPeriod();
@@ -39,8 +40,8 @@ $sheet = $spreadsheet->getActiveSheet();
 $sheet->setTitle('Salary Data ' . $month . ' ' . $selectedYear);
 
 // Header
-$sheet->setCellValue('A1', 'Telco Co-Operative Society Ltd');
-$sheet->setCellValue('A2', 'Telco, Jamshedpur - 831004');
+$sheet->setCellValue('A1', ORG_NAME);
+$sheet->setCellValue('A2', ORG_ADDRESS);
 $sheet->setCellValue('A3', 'SALARY STATEMENT FOR THE MONTH OF ' . $month . ' - ' . $selectedYear);
 foreach (array(1, 2, 3) as $r) {
     $sheet->mergeCells("A$r:{$last}$r");

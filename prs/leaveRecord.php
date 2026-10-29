@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 
 
 require_once 'includes/dbconn.php';
+require_once 'includes/org.php';
 
 $selectedMonth = isset($_GET['month']) ? $_GET['month'] : '';
 $selectedYear = isset($_GET['year']) ? $_GET['year'] : '';
@@ -80,9 +81,9 @@ $rowsPerPage = 25;
 
 function addHeader($sheet, $month, $selectedYear, $startRow)
 {
-    $sheet->setCellValue('A' . $startRow, 'JAMSHEDPUR PUBLIC SCHOOL');
-    $sheet->setCellValue('A' . ($startRow + 1), 'PANCHAVATI ROAD, NEW BARIDIH, JAMSHEDPUR - 831 017');
-    $sheet->setCellValue('A' . ($startRow + 2), 'SUMMERY OF MONTHLY ATTENDANCE FOR THE MONTH OF '. $month . ' - '.  $selectedYear);
+    $sheet->setCellValue('A' . $startRow, ORG_NAME);
+    $sheet->setCellValue('A' . ($startRow + 1), ORG_ADDRESS);
+    $sheet->setCellValue('A' . ($startRow + 2), 'SUMMARY OF MONTHLY ATTENDANCE FOR THE MONTH OF '. $month . ' - '.  $selectedYear);
     $sheet->mergeCells('A' . $startRow . ':V' . $startRow);
     $sheet->mergeCells('A' . ($startRow + 1) . ':V' . ($startRow + 1));
     $sheet->mergeCells('A' . ($startRow + 2) . ':V' . ($startRow + 2));

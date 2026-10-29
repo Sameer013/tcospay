@@ -192,7 +192,7 @@ function getActivePage($apage, $bpage)
                     <li>
                         <a href="index_loan_entry.php" class="side-menu <?php getActive($page, "loanent"); ?>">
                             <div class="side-menu__icon"> <i class="fa-solid fa-money-bill-wave"></i></div>
-                            <div class="side-menu__title">Advance Payment</div>
+                            <div class="side-menu__title">Loan Payment</div>
                         </a>
                     </li>
                     <li>

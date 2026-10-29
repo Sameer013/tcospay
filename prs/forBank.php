@@ -7,6 +7,7 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 
 require_once 'includes/dbconn.php';
+require_once 'includes/org.php';
 
 $selectedMonth = isset($_GET['month']) ? $_GET['month'] : '';
 $selectedYear = isset($_GET['year']) ? $_GET['year'] : '';
@@ -79,8 +80,8 @@ $rowsPerPage = 38;
 
 function addHeader($sheet, $month, $selectedYear, $startRow)
 {
-    $sheet->setCellValue('A' . $startRow, 'Telco Co-Operative Society Ltd');
-    $sheet->setCellValue('A' . ($startRow + 1), 'Telco, Jamshedpur - 831004');
+    $sheet->setCellValue('A' . $startRow, ORG_NAME);
+    $sheet->setCellValue('A' . ($startRow + 1), ORG_ADDRESS);
     $sheet->setCellValue('A' . ($startRow + 2), 'SALARY STATEMENT FOR THE MONTH OF '. $month . ' - '.  $selectedYear);
     $sheet->mergeCells('A' . $startRow . ':D' . $startRow);
     $sheet->mergeCells('A' . ($startRow + 1) . ':D' . ($startRow + 1));
@@ -101,7 +102,7 @@ $sheet->getStyle('A3')->getFont()->setSize(14);
 function addFooter($sheet, $rowNumber)
 {
     $footerStartRow = $rowNumber + 3;
-    $footerText = 'ADMIN           CHAIRPERSON              SECRETARY                 TREASURER';
+    $footerText = implode(str_repeat(' ', 14), explode('|', ORG_SIGNATORIES));
     $sheet->setCellValue('A' . $footerStartRow, $footerText);
     $sheet->mergeCells('A' . $footerStartRow . ':D' . $footerStartRow);
     $sheet->getStyle('A' . $footerStartRow . ':D' . $footerStartRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);

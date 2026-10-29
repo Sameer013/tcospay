@@ -2,6 +2,7 @@
 // Salary Sheet: one table per designation, one column per salary component used this month.
 require_once('tcpdf/tcpdf.php');
 require_once 'includes/dbconn.php';
+require_once 'includes/org.php';
 require_once 'includes/payroll_report.php';
 
 try {
@@ -66,7 +67,11 @@ try {
     $pdf->SetAutoPageBreak(true, 10);
     $pdf->AddPage();
     $pdf->SetFont('freesans', 'B', 15);
-    $pdf->Cell(0, 10, "Salary Statement - $month $selectedYear", 0, 1, 'C');
+    $pdf->Cell(0, 8, ORG_NAME, 0, 1, 'C');
+    $pdf->SetFont('freesans', '', 10);
+    $pdf->Cell(0, 6, ORG_ADDRESS, 0, 1, 'C');
+    $pdf->SetFont('freesans', 'B', 13);
+    $pdf->Cell(0, 9, "Salary Statement - $month $selectedYear", 0, 1, 'C');
 
     $zero = array_fill_keys(array_keys($columns), 0);
     $grand = $zero;

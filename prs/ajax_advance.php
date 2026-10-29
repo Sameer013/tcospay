@@ -3,33 +3,57 @@ ini_set('display_errors', 0);
 session_start();
 $userId = $_SESSION['user'];
 $requestData = $_REQUEST;
+// DataTables column index => sortable column
 $columns = array(
-    0 => 'lno',
-    1 => 'empno',
-    2 => 'action'
+    0 => 'l.LNO',
+    1 => 'e.NAME',
+    2 => 'lt.NAME',
+    3 => 'l.DTE',
+    4 => 'l.DESCR',
+    5 => 'l.AMT',
+    6 => 'l.RATE',
+    7 => 'l.METHOD',
+    8 => 'l.NOINST',
+    9 => 'balance',
 );
 $data = array();
 try {
     require_once 'includes/dbconn.php';
-    if ($userId == 'Admin' || $userId == 'Super Admin') {
-        $sql = "Select l.*, e.NAME from loanmast l LEFT JOIN empmast e ON l.empno = e.empno where l.FLAG=0 or l.FLAG is null";
-    } else {
-        $sql = "Select l.*, e.NAME from loanmast l LEFT JOIN empmast e ON l.empno = e.empno where l.empno=$userId and l.FLAG=0";
+    require_once 'includes/loan_calc.php';
+    $sql = "SELECT l.*, e.NAME, lt.NAME AS TYPENAME,
+            l.AMT - COALESCE((SELECT SUM(COALESCE(ld.PRIN, ld.INSTAMT)) FROM loandet ld WHERE ld.LNO = l.LNO), 0) AS balance
+        FROM loanmast l
+        LEFT JOIN empmast e ON l.empno = e.empno
+        LEFT JOIN loantype lt ON l.LTYPE = lt.CODE
+        WHERE (l.FLAG = 0 OR l.FLAG IS NULL)";
+    $params = array();
+    if ($userId != 'Admin' && $userId != 'Super Admin') {
+        $sql .= " AND l.empno = :empno";
+        $params[':empno'] = $userId;
     }
-    $totalData = $db->query("SELECT COUNT(*) FROM ($sql) b")->fetchColumn();
+
+    $stmt = $db->prepare("SELECT COUNT(*) FROM ($sql) b");
+    $stmt->execute($params);
+    $totalData = $stmt->fetchColumn();
     $totalFiltered = $totalData;
 
     if (!empty($requestData['search']['value'])) {
-        $rd = $requestData['search']['value'];
-        $sql .= " HAVING (e.NAME LIKE '%$rd%')";
-        $totalFiltered = $db->query("SELECT COUNT(*) FROM ($sql) b")->fetchColumn();
+        $sql .= " AND (e.NAME LIKE :search OR lt.NAME LIKE :search2)";
+        $params[':search'] = $params[':search2'] = '%' . $requestData['search']['value'] . '%';
+        $stmt = $db->prepare("SELECT COUNT(*) FROM ($sql) b");
+        $stmt->execute($params);
+        $totalFiltered = $stmt->fetchColumn();
     }
 
-    $sql .= " ORDER BY " . $columns[$requestData['order'][0]['column']] . " " . $requestData['order'][0]['dir'] . " LIMIT " . $requestData['start'] . " ," . $requestData['length'];
+    $orderCol = isset($requestData['order'][0]['column'], $columns[$requestData['order'][0]['column']]) ? $columns[$requestData['order'][0]['column']] : 'l.LNO';
+    $orderDir = (isset($requestData['order'][0]['dir']) && strtolower($requestData['order'][0]['dir']) === 'desc') ? 'DESC' : 'ASC';
+    $sql .= " ORDER BY $orderCol $orderDir LIMIT " . (int) $requestData['start'] . ", " . (int) $requestData['length'];
 
-    $data = $db->query($sql)->fetchAll();
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    $data = $stmt->fetchAll();
 
-
+    $methods = loanMethods();
     $objArr = array();
     foreach ($data as $row) {
 
@@ -48,11 +72,14 @@ try {
         $object->lno     = $row['LNO'];
         $object->empno     = $row['EMPNO'];
         $object->name     = $row['NAME'];
+        $object->ltype     = $row['TYPENAME'] ?: $row['LTYPE'];
         $object->dte     = $row['DTE'];
         $object->descr     = $row['DESCR'];
         $object->amt     = $row['AMT'];
         $object->rate    = $row['RATE'];
+        $object->method    = isset($methods[$row['METHOD']]) ? $methods[$row['METHOD']] : $row['METHOD'];
         $object->noinst    = $row['NOINST'];
+        $object->balance    = number_format(max((float) $row['balance'], 0), 2, '.', '');
         $object->status    = $row['FLAG'];
         $object->action     = $action;
 
@@ -60,11 +87,9 @@ try {
     }
 } catch (PDOException $e) {
     print "Error!: " . $e->getMessage() . "<br/>";
-    print "<br>$sql";
     die();
 }
 $json_data = array(
-    //"sql"			  => $sql,
     "draw"            => intval($requestData['draw']),   // for every request/draw by clientside , they send a number as a parameter, when they recieve a response/data they first check the draw number, so we are sending same number in draw.
     "recordsTotal"    => intval($totalData),  // total number of records
     "recordsFiltered" => intval($totalFiltered), // total number of records after searching, if there is no searching then totalFiltered = totalData

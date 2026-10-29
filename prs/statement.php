@@ -5,6 +5,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 require_once 'includes/dbconn.php';
+require_once 'includes/org.php';
 $selectedMonth = isset($_GET['month']) ? $_GET['month'] : '';
 $selectedYear = isset($_GET['year']) ? $_GET['year'] : '';
 function getMonthName($num)
@@ -66,11 +67,11 @@ $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
 
 $monthYear = $month . '  ' . $selectedYear;
-$sheet->setTitle("For Bank " . $monthYear);
+$sheet->setTitle("Statement " . $monthYear);
 
-$sheet->setCellValue('A1', 'JAMSHEDPUR PUBLIC SCHOOL');
-$sheet->setCellValue('A2', 'PANCHAVATI ROAD, NEW BARIDIH, JAMSHEDPUR - 831 017');
-$sheet->setCellValue('A4', 'STATEMENT OF ESI FOR THE MONTH OF ' . strtoupper($monthYear));
+$sheet->setCellValue('A1', ORG_NAME);
+$sheet->setCellValue('A2', ORG_ADDRESS);
+$sheet->setCellValue('A4', 'SALARY STATEMENT FOR THE MONTH OF ' . strtoupper($monthYear));
 $sheet->mergeCells('A1:D1');
 $sheet->mergeCells('A2:D2');
 $sheet->mergeCells('A4:D4');

@@ -5,6 +5,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 require_once 'includes/dbconn.php';
+require_once 'includes/org.php';
 $selectedMonth = isset($_GET['month']) ? $_GET['month'] : '';
 $selectedYear = isset($_GET['year']) ? $_GET['year'] : '';
 function getMonthName($num)
@@ -76,15 +77,15 @@ $monthName = MonthName($selectedMonth);
 $monthYear = date('F, Y');
 $sheet->setTitle("Letter " . $month.' '.$selectedYear);
 
-$sheet->setCellValue('A1', 'JPS/BANK/2025-26');
+$sheet->setCellValue('A1', ORG_LETTER_REF_PREFIX . orgFinancialYear($selectedMonth, $selectedYear));
 $sheet->setCellValue('G1', 'DATE : ' . date('d/m/Y'));
 $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
 $sheet->getStyle('G1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
 
 $sheet->setCellValue('A3', 'The Branch Manager');
-$sheet->setCellValue('A4', 'State Bank of India');
-$sheet->setCellValue('A5', 'Golmuri Branch');
-$sheet->setCellValue('A6', 'Jamshedpur');
+$sheet->setCellValue('A4', ORG_BANK_NAME);
+$sheet->setCellValue('A5', ORG_BANK_BRANCH);
+$sheet->setCellValue('A6', ORG_BANK_CITY);
 $sheet->mergeCells('A3:G3');
 $sheet->mergeCells('A4:G4');
 $sheet->mergeCells('A5:G5');
@@ -92,8 +93,8 @@ $sheet->mergeCells('A6:G6');
 $sheet->getStyle('A3:G3')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
 
 $sheet->setCellValue('A8', 'Dear Sir,');
-$sheet->setCellValue('A10', "Please find enclosed the following cheque for the staff salary for the month of $monthName, $selectedYear along with Salary Statement to be credited in their personal account.");
-$sheet->setCellValue('A11', 'SALARY STATEMENT (HASH-UTILITY) ALSO SENT THROUGH EMAIL ON ' . date('d/m/Y') . ' (Mob. No.9430371428)');
+$sheet->setCellValue('A10', "Please find enclosed the following cheque for the employees' salary of " . ORG_NAME . " for the month of $monthName, $selectedYear along with Salary Statement to be credited in their personal account.");
+$sheet->setCellValue('A11', 'SALARY STATEMENT (HASH-UTILITY) ALSO SENT THROUGH EMAIL ON ' . date('d/m/Y') . ' (Mob. No.' . ORG_CONTACT_MOBILE . ')');
 $sheet->getStyle('A11:G11')->getFont()->setBold(true);
 $sheet->mergeCells('A8:G8');
 $sheet->mergeCells('A10:G10');
@@ -139,16 +140,15 @@ $sheet->setCellValue('A15', '');
 $sheet->setCellValue('C15', date('d/m/Y'));
 $total = $rows[0]['total'];
 $sheet->setCellValue('E15', 'Rs.' . $total . '/-');
-$sheet->setCellValue('G15', 'STATE BANK OF INDIA, GOLMURI BRANCH');
+$sheet->setCellValue('G15', strtoupper(ORG_BANK_NAME . ', ' . ORG_BANK_BRANCH));
 $sheet->getStyle('A15:G15')->getFont()->setBold(true);
 $sheet->getStyle('A15:G15')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
 
 
-$sheet->setCellValue('A21', 'PRINCIPAL');
-$sheet->setCellValue('C21', 'CHAIRPERSON');
-$sheet->setCellValue('E21', 'SECRETARY');
-$sheet->setCellValue('G21', 'TREASURER');
+foreach (array_combine(['A', 'C', 'E', 'G'], array_pad(explode('|', ORG_SIGNATORIES), 4, '')) as $column => $title) {
+    $sheet->setCellValue($column . '21', $title);
+}
 $sheet->getStyle('A21:G21')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
 foreach (['A', 'C', 'E', 'G'] as $column) {

@@ -9,6 +9,7 @@ if (!isset($_SESSION['user'])) {
 $userId = $_SESSION['user'];
 require_once('tcpdf/tcpdf.php');
 require_once 'includes/dbconn.php';
+require_once 'includes/org.php';
 require_once "includes/payroll_report.php";
 
 list($selectedMonth, $selectedYear) = reportPeriod();
@@ -41,10 +42,10 @@ function printData($pdf, $row, $index, $selectedYear, $month)
     $pdf->Image($imagePath, 10, 15, 40, 20);
     //   $pdf->Line(10, $pdf->GetY(), $pdf->getPageWidth() - 10, $pdf->GetY());
     $pdf->SetFont('freesans', '', 15);
-    $pdf->Cell(0, 15, "TELCO CO-OPERATIVE SOCIETY", 0, 1, 'C');
+    $pdf->Cell(0, 15, ORG_NAME, 0, 1, 'C');
     $pdf->SetY($pdf->GetY() - 9);
     $pdf->SetFont('freesans', '', 12);
-    $pdf->Cell(0, 15, "Tata Motors, Telco Colony, Jamshedpur, 831004", 0, 1, 'C');
+    $pdf->Cell(0, 15, ORG_ADDRESS, 0, 1, 'C');
     $pdf->SetY($pdf->GetY() - 2);
     $pdf->SetFont('freesans', 'BU', 15);
     $pdf->Cell(0, 0, "PAYMENT SLIP", 0, 1, 'C');
@@ -264,7 +265,7 @@ function printData($pdf, $row, $index, $selectedYear, $month)
     $pdf->SetX(75);
     $pdf->Cell(30, 5, "", 1, 0, 'R');
     $pdf->SetX(105);
-    $pdf->Cell(0, 5, "COSING BALANCE", 1, 0, 'L');
+    $pdf->Cell(0, 5, "CLOSING BALANCE", 1, 0, 'L');
     $pdf->SetX(155);
     $pdf->Cell(15, 5, $row['ccl'], 1, 0, 'C');
     $pdf->SetX(170);
@@ -284,7 +285,7 @@ function printData($pdf, $row, $index, $selectedYear, $month)
     $pdf->SetX(185);
     $pdf->Cell(15, 5, "", 1, 1, 'C');
 
-    $pdf->Cell(0, 5, "EMPLYER'S CONTRIBUTION", 1, 0, 'L');
+    $pdf->Cell(0, 5, "EMPLOYER'S CONTRIBUTION", 1, 0, 'L');
     $pdf->SetX(75);
     $pdf->Cell(30, 5, "", 1, 0, 'R');
     $pdf->SetX(105);
