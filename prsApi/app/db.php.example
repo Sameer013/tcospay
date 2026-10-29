@@ -20,9 +20,6 @@ function connect_db()
 		die("Connection failed: " . $connection->connect_error);
 	}
 
-	// The code relies on MySQL's loose GROUP BY behaviour (as on XAMPP/MariaDB), so turn off ONLY_FULL_GROUP_BY for this connection.
-	$connection->query("SET SESSION sql_mode = TRIM(BOTH ',' FROM REPLACE(REPLACE(@@SESSION.sql_mode, 'ONLY_FULL_GROUP_BY', ''), ',,', ','))");
-
 	return $connection;
 }
 
@@ -41,8 +38,6 @@ function getconn()
 			$pass,
 			array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)
 		);
-		// The code relies on MySQL's loose GROUP BY behaviour (as on XAMPP/MariaDB), so turn off ONLY_FULL_GROUP_BY for this connection.
-		$conn->exec("SET SESSION sql_mode = TRIM(BOTH ',' FROM REPLACE(REPLACE(@@SESSION.sql_mode, 'ONLY_FULL_GROUP_BY', ''), ',,', ','))");
 	} catch (PDOException $e) {
 		echo 'Connection failed: ' . $e->getMessage();
 	}

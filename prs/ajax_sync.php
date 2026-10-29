@@ -31,7 +31,7 @@ if (empty($selectedMonth) || empty($selectedYear)) {
             FROM attnddet AS atd
             LEFT JOIN sheet AS s ON EXTRACT(MONTH FROM atd.dt) = s.mnth AND EXTRACT(YEAR FROM atd.dt) = s.yr
             WHERE EXTRACT(YEAR FROM atd.dt) = :selectedYear AND EXTRACT(MONTH FROM atd.dt) = :selectedMonth
-            GROUP BY atd.empno HAVING attnd > 0";
+            GROUP BY s.sheet_id, atd.empno HAVING attnd > 0";
 
             $insert_data = $db->prepare($insert_det_sql);
             $insert_data->bindParam(':selectedYear', $selectedYear);

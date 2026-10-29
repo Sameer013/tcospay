@@ -548,42 +548,24 @@ return function (App $app) {
 				}
 				$db = getconn();
 				// $sql="select * from Empmast ";
-				if ($userId == 'Admin' || $userId == 'Super Admin') {
-					$sql = "SELECT em.*, bm.DESCR, 
-								cat.descr, 
-								cmp.comp_name, 
-								loc.loc, 
-								dsgc.designation, 
-								lg.LeaveGroupDesc
-							FROM empmast AS em
-							LEFT JOIN bankmast AS bm ON em.BID = bm.BID
-							LEFT JOIN category AS cat ON em.CATCODE = cat.catcode
-							LEFT JOIN compmast AS cmp ON em.comp_id = cmp.comp_id
-							LEFT JOIN locmast AS loc ON em.loc_id = loc.loc_id
-							LEFT JOIN designationmaster AS dsgc ON em.DSGCODE = dsgc.desgcode
-							LEFT JOIN leavegroup AS lg ON em.LeaveGroup = lg.LeaveGroupCode
-							GROUP BY 
-								em.EMPNO,
-								bm.DESCR,
-								cat.descr,
-								cmp.comp_name,
-								loc.loc,
-								dsgc.designation,
-								lg.LeaveGroupDesc;";
-				} else {
-					$sql = "SELECT em.*, bm.DESCR, cat.descr, cmp.comp_name, loc.loc, dsgc.designation, lg.LeaveGroupDesc FROM empmast AS em
-							LEFT JOIN bankmast AS bm ON em.BID = bm.BID
-							LEFT JOIN category AS cat ON em.CATCODE = cat.catcode
-							LEFT JOIN compmast AS cmp ON em.comp_id = cmp.comp_id
-							LEFT JOIN locmast AS loc ON em.loc_id = loc.loc_id
-							LEFT JOIN designationmaster AS dsgc ON em.DSGCODE = dsgc.desgcode
-							LEFT JOIN leavegroup AS lg ON em.LeaveGroup = lg.LeaveGroupCode
-							where em.EMPNO = $userId
-							GROUP BY em.EMPNO,bm.DESCR,cat.descr,cmp.comp_name,loc.loc,dsgc.designation,lg.LeaveGroupDesc;";
-						}
+				// leavegroup has one row per leave type; join one row per group so employees aren't repeated
+				$sql = "SELECT em.*, bm.DESCR, cat.descr, cmp.comp_name, loc.loc, dsgc.designation, lg.LeaveGroupDesc
+						FROM empmast AS em
+						LEFT JOIN bankmast AS bm ON em.BID = bm.BID
+						LEFT JOIN category AS cat ON em.CATCODE = cat.catcode
+						LEFT JOIN compmast AS cmp ON em.comp_id = cmp.comp_id
+						LEFT JOIN locmast AS loc ON em.loc_id = loc.loc_id
+						LEFT JOIN designationmaster AS dsgc ON em.DSGCODE = dsgc.desgcode
+						LEFT JOIN (SELECT LeaveGroupCode, MAX(LeaveGroupDesc) AS LeaveGroupDesc FROM leavegroup GROUP BY LeaveGroupCode) AS lg
+							ON em.LeaveGroup = lg.LeaveGroupCode";
+				$where = array();
+				if ($userId != 'Admin' && $userId != 'Super Admin')
+					$where[] = "em.EMPNO = " . (int) $userId;
 				if ($filter)
-					$sql .= " where $filter";
-				else
+					$where[] = "($filter)";
+				if ($where)
+					$sql .= " WHERE " . implode(' AND ', $where);
+				if (!$filter)
 					$sql .= " limit 200";
 				$result = $db->query($sql);
 				$data = $result->fetchAll(PDO::FETCH_ASSOC);
@@ -4451,7 +4433,8 @@ foreach ($tomorrowList['inputs'] as $index => $tomorrowItem) {
 			LEFT JOIN compmast as cmp ON em.comp_id = cmp.comp_id
 			LEFT JOIN locmast as loc ON em.loc_id = loc.loc_id
 			LEFT JOIN designationmaster as dsgc ON em.DSGCODE = dsgc.desgcode
-			LEFT JOIN leavegroup as lg ON em.LeaveGroup = lg.LeaveGroupCode Group BY em.EMPNO
+			LEFT JOIN (SELECT LeaveGroupCode, MAX(LeaveGroupDesc) AS LeaveGroupDesc FROM leavegroup GROUP BY LeaveGroupCode) as lg
+				ON em.LeaveGroup = lg.LeaveGroupCode
 			";
 				if ($filter)
 					$sql .= " where $filter";

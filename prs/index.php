@@ -50,7 +50,8 @@ $stmt = $db->query("
     SELECT COUNT(*) as total, d.DESCR
     FROM empmast e
     JOIN dsgmast d on d.DCODE = e.DSGCODE
-    GROUP BY e.DSGCODE
+    GROUP BY d.DCODE, d.DESCR
+    ORDER BY d.DCODE
 ");
 
 $labels = [];

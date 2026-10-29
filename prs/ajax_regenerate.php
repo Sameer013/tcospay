@@ -29,7 +29,7 @@ JOIN (
         sheet AS s ON EXTRACT(MONTH FROM atd.dt) = s.mnth AND EXTRACT(YEAR FROM atd.dt) = s.yr
     WHERE EXTRACT(YEAR FROM atd.dt) = :selectedYear
     AND EXTRACT(MONTH FROM atd.dt) = :selectedMonth
-    GROUP BY atd.empno
+    GROUP BY s.sheet_id, atd.empno
 ) AS source ON sd.sheet_id = source.sheet_id AND sd.empno = source.empno
 SET
     sd.othour = source.othour,

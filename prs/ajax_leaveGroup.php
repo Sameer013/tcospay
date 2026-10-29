@@ -24,19 +24,28 @@
 
 	// $leaveCode = '2'; //Test Data
 
-	$sql = "SELECT lm.LeaveName, lg.CarryForward, Encash, OverwriteWO, OverwriteHL, CreditType, AnnQuota, AttendDays, LeaveCredit, MonthlyQuota, CreditMonthly, CreditYearly,LeaveGroupCode,lg.LeaveCode FROM leavegroup lg
+	// leavegroup has one row per (LeaveGroupCode, LeaveCode), so no grouping is needed
+	$sql = "SELECT lm.LeaveName, lg.LeaveGroupDesc, lg.CarryForward, Encash, OverwriteWO, OverwriteHL, CreditType, AnnQuota, AttendDays, LeaveCredit, MonthlyQuota, CreditMonthly, CreditYearly,LeaveGroupCode,lg.LeaveCode FROM leavegroup lg
 	JOIN leavemst lm ON lg.LeaveCode=lm.LeaveCode
-	WHERE LeaveGroupCode=$leaveCode
-	GROUP BY lg.LeaveCode";
-	$totalData = $db->query("select count(*) from ($sql) b")->fetchColumn();
+	WHERE LeaveGroupCode = :leaveCode";
+	$params = array(':leaveCode' => $leaveCode);
+	$stmt = $db->prepare("select count(*) from ($sql) b");
+	$stmt->execute($params);
+	$totalData = $stmt->fetchColumn();
 	$totalFiltered = $totalData;
 	if( !empty($requestData['search']['value']) ) {
-	$rd=$requestData['search']['value'];
-	$sql.=" where (LeaveGroupDesc LIKE '%$rd%')";
-	$totalFiltered = $db->query("select count(*) from ($sql) b")->fetchColumn();
+	$sql.=" AND (lm.LeaveName LIKE :search)";
+	$params[':search'] = '%' . $requestData['search']['value'] . '%';
+	$stmt = $db->prepare("select count(*) from ($sql) b");
+	$stmt->execute($params);
+	$totalFiltered = $stmt->fetchColumn();
 	}
-	$sql.=" ORDER BY ". $columns[$requestData['order'][0]['column']]."   ".$requestData['order'][0]['dir']."  LIMIT ".$requestData['start']." ,".$requestData['length']."   ";
-	$data=$db->query($sql)->fetchAll();
+	$orderCol = isset($requestData['order'][0]['column'], $columns[$requestData['order'][0]['column']]) && $columns[$requestData['order'][0]['column']] !== 'action' ? $columns[$requestData['order'][0]['column']] : 'LeaveGroupCode';
+	$orderDir = (isset($requestData['order'][0]['dir']) && strtolower($requestData['order'][0]['dir']) === 'desc') ? 'DESC' : 'ASC';
+	$sql.=" ORDER BY $orderCol $orderDir LIMIT ".(int) $requestData['start']." ,".(int) $requestData['length'];
+	$stmt = $db->prepare($sql);
+	$stmt->execute($params);
+	$data=$stmt->fetchAll();
 
 	$objArr = array();
 	foreach ($data as $row) {

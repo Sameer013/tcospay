@@ -43,8 +43,6 @@ function getDaysInMonth($month, $year)
     return cal_days_in_month(CAL_GREGORIAN, $month, $year);
 }
 
-$db->exec("SET SESSION sql_mode = (SELECT REPLACE(@@SESSION.sql_mode, 'ONLY_FULL_GROUP_BY', ''))");
-
 function checkSheetExistence($db, $selectedMonth, $selectedYear)
 {
 

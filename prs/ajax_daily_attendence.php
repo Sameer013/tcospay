@@ -49,12 +49,14 @@ SELECT
     MAX(CAST(a.dtime AS TIME)) AS outtime,
     TIMEDIFF(MAX(CAST(a.dtime AS TIME)), MIN(CAST(a.dtime AS TIME))) AS WorkDur,
     CASE WHEN MIN(CAST(a.dtime AS TIME)) IS NOT NULL AND MAX(CAST(a.dtime AS TIME)) IS NOT NULL THEN 1 ELSE 0 END AS present,
-    a.shift,
-    a.cmnt AS late,
+    -- shift and late comment come from the day's first punch
+    NULLIF(SUBSTRING_INDEX(GROUP_CONCAT(COALESCE(a.shift, '~') ORDER BY a.dtime SEPARATOR '\n'), '\n', 1), '~') AS shift,
+    NULLIF(SUBSTRING_INDEX(GROUP_CONCAT(COALESCE(a.cmnt, '~') ORDER BY a.dtime SEPARATOR '\n'), '\n', 1), '~') AS late,
+    -- at most one holiday per date / category and one leave per employee / day
     CASE
         WHEN FIND_IN_SET(DAYOFWEEK(ds.date), e.woff) > 0 THEN 'WO'
-        WHEN hm.HolidayDate IS NOT NULL THEN 'HO'
-        ELSE COALESCE(ld.LTYPE, hm.HolidayDescription)
+        WHEN MAX(hm.HolidayDate) IS NOT NULL THEN 'HO'
+        ELSE COALESCE(MAX(ld.LTYPE), MAX(hm.HolidayDescription))
     END AS dflag
 FROM
     DateSeries ds

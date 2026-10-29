@@ -11,10 +11,10 @@ $data = array();
 try {
     require_once 'includes/dbconn.php';
 
-$sql = "SELECT trst.*, em.NAME, td1.DESCR, td1.AMOUNT
+// One row per payslip; the earning / deduction lines are loaded separately by the page
+$sql = "SELECT trst.*, em.NAME
         FROM trnsmst as trst
         LEFT JOIN empmast AS em ON trst.EMPNO=em.EMPNO
-        LEFT JOIN trnsdet1 AS td1 ON trst.TRNSNO=td1.TRNSNO
         WHERE trst.MTHYR = :monthYear";
 
 if (isset($_GET['empNo'])) {
@@ -22,7 +22,7 @@ if (isset($_GET['empNo'])) {
     $sql .= " AND trst.EMPNO = :empNo";
 }
 
-$sql .= " GROUP BY trst.TRNSNO";  
+$sql .= " ORDER BY trst.TRNSNO";
 
 $stmt = $db->prepare($sql);
 $stmt->bindParam(':monthYear', $_GET['monthYear'], PDO::PARAM_STR);

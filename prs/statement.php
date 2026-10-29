@@ -33,7 +33,6 @@ function getMonthName($num)
 }
 $month = getMonthName($selectedMonth);
 
-$db->exec("SET SESSION sql_mode = (SELECT REPLACE(@@SESSION.sql_mode, 'ONLY_FULL_GROUP_BY', ''))");
 
 function checkSheetExistence($db, $selectedMonth, $selectedYear)
 {
