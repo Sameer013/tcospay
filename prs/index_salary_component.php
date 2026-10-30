@@ -92,7 +92,7 @@ if ((!isset($_SESSION['user']))) {
                                         <input id="txt_id" name="txt_id" type="hidden" class="form-control">
                                         <div class="col-span-12 sm:col-span-6">
                                             <label for="txt_code" class="form-label">Code</label>
-                                            <input id="txt_code" name="txt_code" type="text" maxlength="10"
+                                            <input id="txt_code" name="txt_code" type="text" maxlength="50"
                                                 class="form-control" placeholder="Code">
                                         </div>
                                         <div class="col-span-12 sm:col-span-6">
