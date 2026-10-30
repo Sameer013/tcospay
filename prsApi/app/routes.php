@@ -17,9 +17,21 @@ use Slim\Interfaces\RouteCollectorProxyInterface as Group;
 
 require_once 'db.php';
 
+// A salary component's code becomes the head name on payslip lines (trnsdet1/2.DESCR, 50 chars)
+function componentCodeCheck($users)
+{
+	$code = trim((string) ($users['code'] ?? ''));
+	if ($code === '') {
+		throw new Exception('Code is required');
+	}
+	if (strlen($code) > 50) {
+		throw new Exception('Code can be at most 50 characters');
+	}
+}
 
 return function (App $app) {
-	$burl = '/tcospay/prsApi'; //Define base directory
+	// Base URL of the API, worked out from where it is installed: /tcospay/prsApi on XAMPP, /prsApi on the server
+	$burl = preg_replace('#/public$#', '', rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/'));
 	$app->options("$burl/{routes:.*}", function (Request $request, Response $response) {
 		// CORS Pre-Flight OPTIONS Request Handler
 		return $response;
@@ -1230,6 +1242,7 @@ return function (App $app) {
 					$users = is_array($jsonBody) ? $jsonBody : [];
 				}
 
+				componentCodeCheck($users);
 				$db = getconn();
 				$stmt = $db->prepare("INSERT INTO indallmast(code, descr) VALUES(:code, :descr)");
 				$stmt->bindParam(":code", $users['code']);
@@ -1257,6 +1270,7 @@ return function (App $app) {
 					$users = is_array($jsonBody) ? $jsonBody : [];
 				}
 
+				componentCodeCheck($users);
 				$db = getconn();
 				$stmt = $db->prepare("UPDATE indallmast SET code=:code, descr=:descr WHERE id=:id");
 				$stmt->bindParam(":id", $args['id']);
