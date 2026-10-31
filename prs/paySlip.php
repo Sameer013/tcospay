@@ -149,17 +149,19 @@ function slipHtml($row, $loans, $period)
 
     // Loans: always PF, SPL and Comm; NA when the employee has none of that type
     $html .= '<table cellpadding="3" cellspacing="0" style="' . $rule . '">'
-        . '<tr><td width="25%" style="' . $under . '"><b>Loan</b></td><td width="25%" style="' . $under . '"><b>Taken On</b></td>'
-        . '<td width="25%" align="right" style="' . $under . '"><b>Balance (₹)</b></td><td width="25%" align="center" style="' . $under . '"><b>Installments Left</b></td></tr>';
+        . '<tr><td width="20%" style="' . $under . '"><b>Loan</b></td><td width="18%" style="' . $under . '"><b>Taken On</b></td>'
+        . '<td width="21%" align="right" style="' . $under . '"><b>Loan Amount (₹)</b></td>'
+        . '<td width="21%" align="right" style="' . $under . '"><b>Balance (₹)</b></td><td width="20%" align="center" style="' . $under . '"><b>Installments Left</b></td></tr>';
     foreach (array('PF' => 'PF Loan', 'SPL' => 'SPL Loan', 'COM' => 'Comm Loan') as $code => $label) {
         $ofType = array_filter($loans, function ($l) use ($code) {
             return $l['code'] === $code;
         });
         if (!$ofType) {
-            $html .= '<tr><td>' . $label . '</td><td>NA</td><td align="right">NA</td><td align="center">NA</td></tr>';
+            $html .= '<tr><td>' . $label . '</td><td>NA</td><td align="right">NA</td><td align="right">NA</td><td align="center">NA</td></tr>';
         }
         foreach ($ofType as $l) {
             $html .= '<tr><td>' . $label . '</td><td>' . slipDate($l['taken']) . '</td>'
+                . '<td align="right">' . inr($l['amount']) . '</td>'
                 . '<td align="right"><b>' . inr($l['balance']) . '</b></td><td align="center"><b>' . $l['left'] . '</b></td></tr>';
         }
     }
