@@ -50,8 +50,21 @@ $loanMethods = loanMethods();
         width: 60px;
     }
 
-    .dataTables_length select {
-        width: 60px;
+    /* Loan list: tighter cells so all columns fit without scrolling sideways */
+    #table.dataTable thead > tr > th,
+    #table.dataTable tbody > tr > td {
+        padding: 6px 6px;
+    }
+
+    #table.dataTable thead > tr > th.sorting,
+    #table.dataTable thead > tr > th.sorting_asc,
+    #table.dataTable thead > tr > th.sorting_desc {
+        padding-right: 16px;
+    }
+
+    #table.dataTable thead > tr > th:before,
+    #table.dataTable thead > tr > th:after {
+        right: 4px;
     }
 </style>
 
@@ -108,15 +121,15 @@ $loanMethods = loanMethods();
                                     <table id="table" class="table table-bordered table-striped w-full" cellpadding="7px">
                                         <thead>
                                             <tr>
-                                                <th>Loan No</th>
+                                                <th style="width:40px;">Loan<br>No</th>
                                                 <th>Emp Name</th>
                                                 <th>Type</th>
                                                 <th>Date</th>
-                                                <th>Description</th>
                                                 <th>Amount</th>
                                                 <th>Rate %</th>
                                                 <th>Interest Method</th>
                                                 <th>Tenure (months)</th>
+                                                <th>Monthly Premium</th>
                                                 <th>Balance</th>
                                                 <th>Status</th>
                                                 <th>Action</th>
@@ -252,7 +265,7 @@ $loanMethods = loanMethods();
                 <!-- END: Modal Toggle -->
                 <!-- BEGIN: Modal Content -->
                 <div id="header-footer-modal-preview-view" class="modal" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog">
+                    <div class="modal-dialog modal-xl">
                         <div class="modal-content">
                             <!-- BEGIN: Modal Header -->
                             <div class="modal-header">
@@ -299,12 +312,17 @@ $loanMethods = loanMethods();
                                         <input id="txt_amount" name="txt_amount" type="text" class="form-control " placeholder="Amount">
                                     </div>
                                     <div class="col-span-12 sm:col-span-6">
-                                        <label for="txt_cleared" class="form-label">Cleared</label><br>
+                                        <label for="txt_cleared" class="form-label">Mark as NIL</label><br>
                                         <input id="txt_cleared" name="txt_cleared" type="checkbox" value="0" onchange="updateCheckboxValue(this)">
                                     </div>
                                     <div class="col-span-12 sm:col-span-6">
                                         <label for="txt_nofinst" class="form-label">Tenure (months)</label>
                                         <input id="txt_nofinst" name="txt_nofinst" type="number" min="1" step="1" class="form-control" placeholder="No of monthly installments">
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-6">
+                                        <label for="txt_premium" class="form-label">Monthly Premium</label>
+                                        <input id="txt_premium" name="txt_premium" type="number" min="0" step="0.01" class="form-control" placeholder="Blank = Amount / Tenure">
+                                        <div class="text-xs text-slate-500 mt-1">Change it any time; the new premium is deducted from the next payroll run. Months already deducted stay as they are.</div>
                                     </div>
                                     <div class="col-span-12 sm:col-span-6 interest-field">
                                         <label for="txt_method" class="form-label">Interest Method</label>
@@ -320,7 +338,7 @@ $loanMethods = loanMethods();
                                     </div>
                                     <div class="col-span-12 sm:col-span-6" id="intMonthsField">
                                         <label for="txt_intMonths" class="form-label">Recover Interest Over (months)</label>
-                                        <input id="txt_intMonths" name="txt_intMonths" type="number" min="1" step="1" class="form-control" placeholder="Months after principal is repaid">
+                                        <input id="txt_intMonths" name="txt_intMonths" type="number" min="1" step="1" class="form-control" placeholder="Months after premium is repaid">
                                     </div>
                                     <div class="col-span-12 sm:col-span-6">
                                         <label class="form-label">First Month Deduction</label>
@@ -336,7 +354,7 @@ $loanMethods = loanMethods();
                                                         <tr>
                                                             <th>Sl No</th>
                                                             <th>Month</th>
-                                                            <th>Principal</th>
+                                                            <th>Premium</th>
                                                             <th>Interest</th>
                                                             <th>Total</th>
                                                             <th>Balance</th>
@@ -482,7 +500,7 @@ $loanMethods = loanMethods();
             applyTypeDefaults();
             updateLoanForm();
         });
-        $("#txt_method, #txt_amount, #txt_intRate, #txt_nofinst, #txt_intMonths").on("change input", updateLoanForm);
+        $("#txt_method, #txt_amount, #txt_intRate, #txt_nofinst, #txt_premium, #txt_intMonths").on("change input", updateLoanForm);
 
         $(".lt-save").on("click", function() {
             const tr = $(this).closest("tr");
@@ -541,15 +559,19 @@ $loanMethods = loanMethods();
         const amt = parseFloat($("#txt_amount").val()) || 0;
         const n = parseInt($("#txt_nofinst").val()) || 0;
         const rate = parseFloat($("#txt_intRate").val()) || 0;
-        if (!amt || !n) {
+        const premium = parseFloat($("#txt_premium").val()) || 0;
+        // The placeholder shows the automatic premium (amount / tenure)
+        $("#txt_premium").attr("placeholder", amt && n ? 'Auto: ' + (Math.round(amt / n * 100) / 100).toFixed(2) : 'Blank = Amount / Tenure');
+        if (!amt || (!n && !premium)) {
             $("#firstInst").text('-');
             return;
         }
-        const prin = Math.min(amt, Math.round(amt / n * 100) / 100);
+        const prin = Math.min(amt, premium > 0 ? premium : Math.round(amt / n * 100) / 100);
         const int = (method === 'REDUCING' || method === 'FLAT') ? Math.round(amt * rate / 1200 * 100) / 100 : 0;
-        let text = (type.PRIN_HEAD || 'Principal') + ' ' + prin.toFixed(2);
+        const head = type.PRIN_HEAD || 'Premium';
+        let text = head + (/loan$/i.test(head) ? ' Premium ' : ' ') + prin.toFixed(2);
         if (hasInt) text += ' + ' + type.INT_HEAD + ' ' + int.toFixed(2) + ' = ' + (prin + int).toFixed(2);
-        if (method === 'PRINFIRST') text += ' (interest after principal)';
+        if (method === 'PRINFIRST') text += ' (interest after premium)';
         $("#firstInst").text(text);
     }
     var dtable = $('#table').DataTable({
@@ -557,11 +579,14 @@ $loanMethods = loanMethods();
         "processing": true,
         "searching": true,
         "serverSide": true,
+        "autoWidth": false, // let the table fit its box instead of a width measured at load
         "ajax": {
             "url": "ajax_advance.php",
         },
         "columns": [{
-                "data": "lno"
+                "data": "lno",
+                "width": "40px",
+                "className": "text-center"
             },
             {
                 "data": "name"
@@ -571,9 +596,6 @@ $loanMethods = loanMethods();
             },
             {
                 "data": "dte"
-            },
-            {
-                "data": "descr"
             },
             {
                 "data": "amt"
@@ -588,14 +610,19 @@ $loanMethods = loanMethods();
                 "data": "noinst"
             },
             {
+                "data": "premium",
+                "render": function(data, type, row) {
+                    return row.premiumSet ? data : data + ' <span class="text-slate-400">(auto)</span>';
+                }
+            },
+            {
                 "data": "balance",
                 "orderable": false
             },
             {
                 "data": "status",
-                "orderable": false,
                 "render": function(data, type, row) {
-                    return data === 0 || data === null ? "Pending" : data === 1 ? "Cleared" : data;
+                    return data == 1 ? '<span class="font-medium text-slate-500">NIL</span>' : '<span class="font-medium text-success">Active</span>';
                 }
             },
             isAdmin ? {
@@ -697,6 +724,7 @@ $loanMethods = loanMethods();
                 $("#txt_intRate").val(res.RATE);
                 $("#txt_method").val(res.METHOD);
                 $("#txt_nofinst").val(res.NOINST);
+                $("#txt_premium").val(parseFloat(res.PREMIUM) > 0 ? res.PREMIUM : '');
                 $("#txt_intMonths").val(res.INT_MONTHS || '');
                 $("#txt_cleared").prop("checked", res.FLAG == 1);
                 $("#txt_lno").val(res.LNO);

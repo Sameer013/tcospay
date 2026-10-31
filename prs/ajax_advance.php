@@ -9,23 +9,26 @@ $columns = array(
     1 => 'e.NAME',
     2 => 'lt.NAME',
     3 => 'l.DTE',
-    4 => 'l.DESCR',
-    5 => 'l.AMT',
-    6 => 'l.RATE',
-    7 => 'l.METHOD',
-    8 => 'l.NOINST',
+    4 => 'l.AMT',
+    5 => 'l.RATE',
+    6 => 'l.METHOD',
+    7 => 'l.NOINST',
+    8 => 'monthly_premium',
     9 => 'balance',
+    10 => 'l.FLAG',
 );
 $data = array();
 try {
     require_once 'includes/dbconn.php';
     require_once 'includes/loan_calc.php';
+    // Every loan, cleared ones included (their status says so)
     $sql = "SELECT l.*, e.NAME, lt.NAME AS TYPENAME,
+            COALESCE(NULLIF(l.PREMIUM, 0), l.AMT / NULLIF(l.NOINST, 0)) AS monthly_premium,
             l.AMT - COALESCE((SELECT SUM(COALESCE(ld.PRIN, ld.INSTAMT)) FROM loandet ld WHERE ld.LNO = l.LNO), 0) AS balance
         FROM loanmast l
         LEFT JOIN empmast e ON l.empno = e.empno
         LEFT JOIN loantype lt ON l.LTYPE = lt.CODE
-        WHERE (l.FLAG = 0 OR l.FLAG IS NULL)";
+        WHERE 1 = 1";
     $params = array();
     if ($userId != 'Admin' && $userId != 'Super Admin') {
         $sql .= " AND l.empno = :empno";
@@ -79,6 +82,8 @@ try {
         $object->rate    = $row['RATE'];
         $object->method    = isset($methods[$row['METHOD']]) ? $methods[$row['METHOD']] : $row['METHOD'];
         $object->noinst    = $row['NOINST'];
+        $object->premium    = number_format((float) $row['monthly_premium'], 2, '.', '');
+        $object->premiumSet    = (float) $row['PREMIUM'] > 0;
         $object->balance    = number_format(max((float) $row['balance'], 0), 2, '.', '');
         $object->status    = $row['FLAG'];
         $object->action     = $action;

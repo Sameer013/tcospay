@@ -1,173 +1,152 @@
 <?php
+/*
+ * Bank advice letter: fills templates/advice_letter.xlsx (one sheet per bank) for the month.
+ *
+ * Each sheet keeps its bank, debit account, wording and employee rows from the template.
+ * For every row the employee's net pay goes into AMOUNT TO BE CREDITED, matched on the
+ * account number (the payroll may store it with a branch prefix, e.g. 11262001000167 for
+ * 2001000167), and every "Date:" keeps the template's day with the month after the pay month.
+ * The sheets' own SUM formulas give the totals.
+ * Employees paid this month but missing from the template, and template rows without pay,
+ * are listed on an extra CHECK sheet. New employees are added to the template by hand.
+ */
+session_start();
+if (!isset($_SESSION['user'])) {
+    header("location:login.php");
+    exit;
+}
 require '../vendor/autoload.php';
-
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-
 require_once 'includes/dbconn.php';
-require_once 'includes/org.php';
-$selectedMonth = isset($_GET['month']) ? $_GET['month'] : '';
-$selectedYear = isset($_GET['year']) ? $_GET['year'] : '';
-function getMonthName($num)
-{
-    $months = [
-        1 => 'Jan',
-        2 => 'Feb',
-        3 => 'Mar',
-        4 => 'Apr',
-        5 => 'May',
-        6 => 'Jun',
-        7 => 'Jul',
-        8 => 'Aug',
-        9 => 'Sep',
-        10 => 'Oct',
-        11 => 'Nov',
-        12 => 'Dec'
-    ];
+require_once 'includes/payroll_report.php';
 
-    if (isset($months[$num])) {
-        return $months[$num];
-    } else {
-        return "Invalid month number";
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+
+list($selectedMonth, $selectedYear) = reportPeriod();
+$month = reportMonthName($selectedMonth);
+$sheet_id = reportSheetId($db, $selectedMonth, $selectedYear);
+
+$digits = function ($v) {
+    if (is_float($v) || is_int($v)) {
+        $v = sprintf('%.0f', $v);
+    }
+    return preg_replace('/\D/', '', (string) $v);
+};
+
+// This month's net pay by account number
+$stmt = $db->prepare("
+    SELECT e.EMPNO, e.NAME, e.ACCNO, t.netAmt
+    FROM trnsmst t JOIN empmast e ON e.EMPNO = t.EMPNO
+    WHERE t.sheet_id = :sheet_id");
+$stmt->execute(array(':sheet_id' => $sheet_id));
+$paid = $stmt->fetchAll(PDO::FETCH_ASSOC);
+if (!$paid) {
+    reportStop('Payroll is not processed for ' . $month . ' ' . $selectedYear);
+}
+
+// The employee whose account is the letter's account, or ends with it (branch prefix)
+$findEmployee = function ($account) use ($paid, $digits) {
+    if (strlen($account) < 6) {
+        return null;
+    }
+    $hits = array_filter($paid, function ($p) use ($account, $digits) {
+        $acc = $digits($p['ACCNO']);
+        return $acc === $account || substr($acc, -strlen($account)) === $account;
+    });
+    return count($hits) === 1 ? reset($hits) : null;
+};
+
+$book = IOFactory::load(__DIR__ . '/templates/advice_letter.xlsx');
+
+// The letter keeps the template's day of the month; month and year follow the pay month,
+// moved on by this many months (salary for October is paid in November: 1)
+define('LETTER_MONTHS_AFTER_PAY_MONTH', 0);
+$letterMonth = mktime(0, 0, 0, $selectedMonth + LETTER_MONTHS_AFTER_PAY_MONTH, 1, $selectedYear);
+$letterDate = function ($templateDay) use ($letterMonth) {
+    $day = min((int) $templateDay, (int) date('t', $letterMonth)); // 31 in a 30-day month -> 30
+    return sprintf('%02d-%s', $day, date('m-Y', $letterMonth));
+};
+$placed = array();
+$problems = array();
+
+foreach ($book->getWorksheetIterator() as $ws) {
+    $lastRow = $ws->getHighestRow();
+    $lastCol = Coordinate::columnIndexFromString($ws->getHighestColumn());
+    $headRow = $accCol = $amtCol = null;
+
+    for ($r = 1; $r <= $lastRow; $r++) {
+        for ($c = 1; $c <= $lastCol; $c++) {
+            $cell = $ws->getCell(Coordinate::stringFromColumnIndex($c) . $r);
+            $v = $cell->getValue();
+            if (!is_string($v)) {
+                continue;
+            }
+            if (preg_match('/^\s*Date\s*:/i', $v)) {
+                $cell->setValue(preg_replace_callback('/(\d{1,2})[-\/.]\d{1,2}[-\/.]\d{4}/', function ($m) use ($letterDate) {
+                    return $letterDate($m[1]);
+                }, $v));
+            }
+            $label = strtoupper(trim($v));
+            if (strpos($label, 'AMOUNT TO BE CREDITED') !== false) {
+                $headRow = $r;
+                $amtCol = $c;
+            } elseif (strpos($label, 'ACCOUNT NO') !== false) {
+                $accCol = $c;
+            }
+        }
+    }
+    if ($headRow === null || $accCol === null) {
+        $problems[] = array($ws->getTitle(), '', '', 'Sheet has no ACCOUNT NO. / AMOUNT TO BE CREDITED header; left unchanged');
+        continue;
+    }
+
+    // Employee rows: from under the header to the TOTAL row
+    for ($r = $headRow + 1; $r <= $lastRow; $r++) {
+        $accValue = $ws->getCell(Coordinate::stringFromColumnIndex($accCol) . $r)->getValue();
+        if (is_string($accValue) && strtoupper(trim($accValue)) === 'TOTAL') {
+            break;
+        }
+        $account = $digits($accValue);
+        if ($account === '') {
+            continue;
+        }
+        $amountCell = $ws->getCell(Coordinate::stringFromColumnIndex($amtCol) . $r);
+        $amountCell->getStyle()->getNumberFormat()->setFormatCode('0.00');
+        $emp = $findEmployee($account);
+        if ($emp) {
+            $amountCell->setValue(round((float) $emp['netAmt'], 2));
+            $placed[$emp['EMPNO']] = true;
+        } else {
+            $amountCell->setValue(0);
+            $name = $ws->getCell('B' . $r)->getValue();
+            $problems[] = array($ws->getTitle(), trim((string) $name), $account, 'No payroll this month for this account; amount set to 0');
+        }
     }
 }
-function MonthName($num)
-{
-    $dateObj = DateTime::createFromFormat('!m', $num); // '!m' ensures only the month is parsed
-    return $dateObj ? $dateObj->format('F') : 'Invalid month number'; // 'F' returns the full month name
-}
 
-$month = getMonthName($selectedMonth);
-function getDaysInMonth($month, $year)
-{
-    return cal_days_in_month(CAL_GREGORIAN, $month, $year);
-}
-
-function checkSheetExistence($db, $selectedMonth, $selectedYear)
-{
-
-    $sql_sheet_id = "SELECT sheet_id FROM sheet WHERE mnth = $selectedMonth AND yr = $selectedYear";
-
-    $stmt_sheet_id = $db->prepare($sql_sheet_id);
-    $stmt_sheet_id->execute();
-    $sheet_id = $stmt_sheet_id->fetchColumn();
-
-    if ($sheet_id) {
-        return $sheet_id;
-    } else {
-        echo '<script type="text/javascript">alert("No Month Data");
-       // window.location.href = "index_salary.php";</script>';
-        die();
+foreach ($paid as $p) {
+    if (!isset($placed[$p['EMPNO']])) {
+        $problems[] = array('-', $p['NAME'], $digits($p['ACCNO']), 'Paid ' . number_format((float) $p['netAmt'], 2, '.', '') . ' but not in any bank sheet; add the employee to templates/advice_letter.xlsx');
     }
 }
-$daysInMonth = getDaysInMonth($selectedMonth, $selectedYear);
-$sheet_id = checkSheetExistence($db, $selectedMonth, $selectedYear);
-$sql = "SELECT SUM(ROUND(t.netAmt, 0)) AS total
-FROM trnsmst t
-WHERE t.sheet_id = $sheet_id";
 
-$stmt = $db->prepare($sql);
-$stmt->execute();
-$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-$spreadsheet = new Spreadsheet();
-$sheet = $spreadsheet->getActiveSheet();
-$monthName = MonthName($selectedMonth);
-$monthYear = date('F, Y');
-$sheet->setTitle("Letter " . $month.' '.$selectedYear);
-
-$sheet->setCellValue('A1', ORG_LETTER_REF_PREFIX . orgFinancialYear($selectedMonth, $selectedYear));
-$sheet->setCellValue('G1', 'DATE : ' . date('d/m/Y'));
-$sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
-$sheet->getStyle('G1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
-
-$sheet->setCellValue('A3', 'The Branch Manager');
-$sheet->setCellValue('A4', ORG_BANK_NAME);
-$sheet->setCellValue('A5', ORG_BANK_BRANCH);
-$sheet->setCellValue('A6', ORG_BANK_CITY);
-$sheet->mergeCells('A3:G3');
-$sheet->mergeCells('A4:G4');
-$sheet->mergeCells('A5:G5');
-$sheet->mergeCells('A6:G6');
-$sheet->getStyle('A3:G3')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
-
-$sheet->setCellValue('A8', 'Dear Sir,');
-$sheet->setCellValue('A10', "Please find enclosed the following cheque for the employees' salary of " . ORG_NAME . " for the month of $monthName, $selectedYear along with Salary Statement to be credited in their personal account.");
-$sheet->setCellValue('A11', 'SALARY STATEMENT (HASH-UTILITY) ALSO SENT THROUGH EMAIL ON ' . date('d/m/Y') . ' (Mob. No.' . ORG_CONTACT_MOBILE . ')');
-$sheet->getStyle('A11:G11')->getFont()->setBold(true);
-$sheet->mergeCells('A8:G8');
-$sheet->mergeCells('A10:G10');
-$sheet->mergeCells('A11:G11');
-
-$sheet->getStyle('A8')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
-$sheet->getStyle('A8')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
-$sheet->getStyle('A10')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
-$sheet->getStyle('A10')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
-$sheet->getStyle('A11')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
-$sheet->getStyle('A11')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
-
-$sheet->getStyle('A8')->getAlignment()->setWrapText(true);
-$sheet->getStyle('A10')->getAlignment()->setWrapText(true);
-$sheet->getStyle('A11')->getAlignment()->setWrapText(true);
-
-$sheet->getRowDimension(10)->setRowHeight(30);
-$sheet->getRowDimension(11)->setRowHeight(40);
-$sheet->getRowDimension(14)->setRowHeight(10);
-$sheet->getRowDimension(15)->setRowHeight(25);
-
-$columnsToAdjust = ['A', 'C', 'E', 'G'];
-foreach ($columnsToAdjust as $column) {
-    $sheet->getColumnDimension($column)->setWidth(15);
+// Anything that needs a look goes on its own sheet (not part of the letters)
+if ($problems) {
+    $check = $book->createSheet();
+    $check->setTitle('CHECK');
+    $check->fromArray(array('Sheet', 'Name', 'Account No.', 'Problem'), null, 'A1');
+    $check->fromArray($problems, null, 'A2');
+    $check->getStyle('A1:D1')->getFont()->setBold(true);
+    foreach (array('A' => 10, 'B' => 28, 'C' => 18, 'D' => 80) as $col => $w) {
+        $check->getColumnDimension($col)->setWidth($w);
+    }
+    $check->getStyle('C2:C' . (count($problems) + 1))->getNumberFormat()->setFormatCode('@');
 }
+$book->setActiveSheetIndex(0);
 
-$sheet->getColumnDimension('B')->setWidth(2);
-$sheet->getColumnDimension('D')->setWidth(2);
-$sheet->getColumnDimension('F')->setWidth(2);
-
-
-$sheet->setCellValue('A13', 'CHEQUE NO.');
-$sheet->setCellValue('C13', 'DATE');
-$sheet->setCellValue('E13', 'AMOUNT');
-$sheet->setCellValue('G13', 'BANK');
-$sheet->getStyle('A13:G13')->getFont()->setBold(true);
-$sheet->getStyle('A13:G13')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
-$sheet->getStyle('A13:G13')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
-$sheet->getStyle('A13:G13')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
-
-
-$sheet->setCellValue('A15', '');
-$sheet->setCellValue('C15', date('d/m/Y'));
-$total = $rows[0]['total'];
-$sheet->setCellValue('E15', 'Rs.' . $total . '/-');
-$sheet->setCellValue('G15', strtoupper(ORG_BANK_NAME . ', ' . ORG_BANK_BRANCH));
-$sheet->getStyle('A15:G15')->getFont()->setBold(true);
-$sheet->getStyle('A15:G15')->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
-
-
-
-foreach (array_combine(['A', 'C', 'E', 'G'], array_pad(explode('|', ORG_SIGNATORIES), 4, '')) as $column => $title) {
-    $sheet->setCellValue($column . '21', $title);
-}
-$sheet->getStyle('A21:G21')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-
-foreach (['A', 'C', 'E', 'G'] as $column) {
-    $sheet->getColumnDimension($column)->setAutoSize(true);
-}
-
-$sheet->getPageSetup()->setPaperSize(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::PAPERSIZE_A4);
-$sheet->getPageSetup()->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_PORTRAIT);
-$sheet->getPageSetup()->setFitToWidth(1);
-$sheet->getPageSetup()->setFitToHeight(0);
-
-$sheet->getPageSetup()->setPrintArea('A1:G25');
-
-
-$writer = new Xlsx($spreadsheet);
-$filename = 'letter_' . $month . '-' . $selectedYear . '.xlsx';
-
-ob_clean();
+$filename = 'Advice_Letter_' . $month . '-' . $selectedYear . '.xlsx';
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment;filename="' . $filename . '"');
 header('Cache-Control: max-age=0');
-$writer->save('php://output');
+IOFactory::createWriter($book, 'Xlsx')->save('php://output');
 exit;
-

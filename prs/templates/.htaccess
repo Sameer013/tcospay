@@ -1,0 +1,2 @@
+# Report templates hold employee bank details; PHP reads them from disk, never serve them
+Require all denied

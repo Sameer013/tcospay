@@ -386,6 +386,12 @@ label {
                                         </div>
 
                                         <div class="flex items-center">
+                                            <label for="txt_aadhar" class="w-1/3 font-medium">Aadhaar No.:</label>
+                                            <input type="text" class="input-box w-2/3" id="txt_aadhar"
+                                                name="txt_aadhar" placeholder="Aadhaar Number" readonly>
+                                        </div>
+
+                                        <div class="flex items-center">
                                             <label for="txt_dob" class="w-1/3 font-medium">Date of Birth:</label>
                                             <input type="text" class="input-box w-2/3 txt_dob" id="txt_dob"
                                                 name="txt_dob" placeholder="Enter DOB" readonly>
@@ -1037,6 +1043,13 @@ label {
                                                     id="txt_Pan" name="txt_Pan" maxlength='10'
                                                     placeholder="Enter PAN Number"
                                                     oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" />
+                                            </div>
+                                            <div class="col-span-12 sm:col-span-4">
+                                                <label class="form-label" for="txt_Aadhar">Aadhaar Number:</label>
+                                                <input type="text" class="form-control txt_aadhar rounded-pill text-dark"
+                                                    id="txt_Aadhar" name="txt_Aadhar" maxlength="12" inputmode="numeric"
+                                                    placeholder="12-digit Aadhaar Number"
+                                                    oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
                                             </div>
                                             <div class="col-span-12 sm:col-span-4">
                                                 <label class="form-label" for="txt_Catcode">Category: *</label>
@@ -2188,6 +2201,7 @@ function updateEmployeeInformation(res) {
     $("#txt_sex").val(res.SEX);
     $("#txt_mar_stat").val(res.mar_stat);
     $("#txt_pan").val(res.PAN);
+    $("#txt_aadhar").val(res.AADHAR);
     $("#txt_catcode").val(res.descr);
     $("#txt_dob").val(res.DOB);
     $("#txt_doj").val(res.DOJ);
@@ -2631,6 +2645,7 @@ function show_general_data(empno, modalSelector) {
             $("input[name='txt_Mar_stat']").prop("checked", false);
             $("input[name='txt_Mar_stat'][value='" + data.mar_stat + "']").prop("checked", true);
             $(".txt_pan").val(data.PAN);
+            $("#txt_Aadhar").val(data.AADHAR);
             $("#txt_Catcode").val(data.CATCODE);
             $(".txt_dob").val(data.DOB);
             $(".txt_doj").val(data.DOJ);

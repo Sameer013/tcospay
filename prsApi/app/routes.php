@@ -672,6 +672,7 @@ return function (App $app) {
         $sex      = $nullIfEmpty($data['txt_Sex'] ?? $data['txt_sex'] ?? null); // handle case sensitive keys from add and update forms
         $marStat  = $nullIfEmpty($data['txt_Mar_stat'] ?? null);
         $pan      = $nullIfEmpty($data['txt_Pan'] ?? null);
+        $aadhar   = $nullIfEmpty(preg_replace('/\D/', '', (string) ($data['txt_Aadhar'] ?? '')));
         $catcode  = $nullIfEmpty($data['txt_Catcode'] ?? null);
         $dsgcode  = $nullIfEmpty($data['txt_Dsgcode'] ?? null);
         $cardno   = $nullIfEmpty($data['txt_Cardno'] ?? null);
@@ -686,12 +687,12 @@ return function (App $app) {
         // ─────────────────────────────────────────────
         $sql = "INSERT INTO empmast (
                     NAME, comp_id, STATE, ADDRESS, ADDRESS1,
-                    PHONE, PHONE1, SEX, mar_stat, PAN,
+                    PHONE, PHONE1, SEX, mar_stat, PAN, AADHAR,
                     CATCODE, DOB, DOJ, DSGCODE,
                     DOR, DOC, cardno, PHOTO
                 ) VALUES (
                     :txt_Name, :txt_Comp_id, :txt_State, :txt_Address, :txt_Add1,
-                    :txt_Phone, :txt_Phone1, :txt_Sex, :txt_Mar_stat, :txt_Pan,
+                    :txt_Phone, :txt_Phone1, :txt_Sex, :txt_Mar_stat, :txt_Pan, :txt_Aadhar,
                     :txt_Catcode, :txt_Dob, :txt_Doj, :txt_Dsgcode,
                     :txt_Dor, :txt_Doc, :txt_Cardno, :txt_PHOTO
                 )";
@@ -711,6 +712,7 @@ return function (App $app) {
         $stmt->bindParam(":txt_Sex", $sex);
         $stmt->bindParam(":txt_Mar_stat", $marStat);
         $stmt->bindParam(":txt_Pan", $pan);
+        $stmt->bindParam(":txt_Aadhar", $aadhar);
         $stmt->bindParam(":txt_Catcode", $catcode);
         $stmt->bindParam(":txt_Dsgcode", $dsgcode);
         $stmt->bindParam(":txt_Cardno", $cardno);
@@ -848,6 +850,7 @@ return function (App $app) {
         $sex         = $nullIfEmpty($pickValue(['sex', 'Sex'], 'SEX'));
         $marStat     = $nullIfEmpty($pickValue('Mar_stat', 'mar_stat'));
         $pan         = $nullIfEmpty($pickValue('Pan', 'PAN'));
+        $aadhar      = $nullIfEmpty(preg_replace('/\D/', '', (string) $pickValue('Aadhar', 'AADHAR')));
         $catcode     = $nullIfEmpty($pickValue('Catcode', 'CATCODE'));
         $dsgcode     = $nullIfEmpty($pickValue('Dsgcode', 'DSGCODE'));
         $cardno      = $nullIfEmpty($pickValue('Cardno', 'cardno'));
@@ -892,6 +895,7 @@ return function (App $app) {
                     SEX             = :txt_Sex,
                     mar_stat        = :txt_Mar_stat,
                     PAN             = :txt_Pan,
+                    AADHAR          = :txt_Aadhar,
                     CATCODE         = :txt_Catcode,
                     DOB             = :txt_Dob,
                     DOJ             = :txt_Doj,
@@ -933,6 +937,7 @@ return function (App $app) {
         $stmt->bindParam(":txt_Sex",       $sex);
         $stmt->bindParam(":txt_Mar_stat",  $marStat);
         $stmt->bindParam(":txt_Pan",       $pan);
+        $stmt->bindParam(":txt_Aadhar",    $aadhar);
         $stmt->bindParam(":txt_Catcode",   $catcode);
         $stmt->bindParam(":txt_Dsgcode",   $dsgcode);
         $stmt->bindParam(":txt_Cardno",    $cardno);
@@ -4082,8 +4087,8 @@ return function (App $app) {
 		$group->post('', function (Request $request, Response $response, $args) {
 			try {
 				$users = $request->getParsedBody();
-				$sql = "INSERT INTO loanmast(EMPNO, LTYPE, DTE, DESCR, AMT, RATE, METHOD, NOINST, INT_MONTHS, FLAG)
-            VALUES(:txt_empno, :txt_ltype, :txt_date, :txt_descr, :txt_amount, :txt_intRate, :txt_method, :txt_nofinst, :txt_intMonths, 0)";
+				$sql = "INSERT INTO loanmast(EMPNO, LTYPE, DTE, DESCR, AMT, RATE, METHOD, NOINST, PREMIUM, INT_MONTHS, FLAG)
+            VALUES(:txt_empno, :txt_ltype, :txt_date, :txt_descr, :txt_amount, :txt_intRate, :txt_method, :txt_nofinst, :txt_premium, :txt_intMonths, 0)";
 				$db = getconn();
 				$stmt = $db->prepare($sql);
 				$stmt->bindValue(":txt_empno", $users['empno']);
@@ -4094,6 +4099,7 @@ return function (App $app) {
 				$stmt->bindValue(":txt_intRate", !empty($users['intRate']) ? $users['intRate'] : 0);
 				$stmt->bindValue(":txt_method", !empty($users['method']) ? $users['method'] : 'NONE');
 				$stmt->bindValue(":txt_nofinst", $users['nofinst']);
+				$stmt->bindValue(":txt_premium", isset($users['premium']) && (float) $users['premium'] > 0 ? $users['premium'] : null);
 				$stmt->bindValue(":txt_intMonths", !empty($users['intMonths']) ? $users['intMonths'] : null);
 				$stmt->execute();
 				if ($stmt->rowCount() > 0)
@@ -4120,7 +4126,7 @@ return function (App $app) {
 				$db = getconn();
 				$users = $request->getParsedBody();
 				$sql = "UPDATE loanmast SET ltype=:txt_ltype, dte=:txt_date, amt=:txt_amount, descr=:txt_descr, rate=:txt_intRate, method=:txt_method,
-					noinst=:txt_nofinst, int_months=:txt_intMonths, FLAG=:txt_cleared WHERE lno=:txt_lno";
+					noinst=:txt_nofinst, premium=:txt_premium, int_months=:txt_intMonths, FLAG=:txt_cleared WHERE lno=:txt_lno";
 				$stmt = $db->prepare($sql);
 				$stmt->bindValue(":txt_lno", $args['code']);
 				$stmt->bindValue(":txt_ltype", !empty($users['ltype']) ? $users['ltype'] : 'ADV');
@@ -4130,6 +4136,8 @@ return function (App $app) {
 				$stmt->bindValue(":txt_intRate", !empty($users['intRate']) ? $users['intRate'] : 0);
 				$stmt->bindValue(":txt_method", !empty($users['method']) ? $users['method'] : 'NONE');
 				$stmt->bindValue(":txt_nofinst", $users['nofinst']);
+				// Blank premium = amount / tenure; a new premium applies from the next payroll run
+				$stmt->bindValue(":txt_premium", isset($users['premium']) && (float) $users['premium'] > 0 ? $users['premium'] : null);
 				$stmt->bindValue(":txt_intMonths", !empty($users['intMonths']) ? $users['intMonths'] : null);
 				// An unticked checkbox is not posted at all
 				$stmt->bindValue(":txt_cleared", !empty($users['cleared']) ? 1 : 0);

@@ -1,9 +1,17 @@
 <?php
-// Salary Sheet: one table per designation, one column per salary component used this month.
+/*
+ * Salary Sheet (portrait A4): salary components as rows, employees as columns.
+ * Earnings (to Gross), deductions (to Total Deductions), Net Pay and a signature row;
+ * a Total column follows the last employee. Components that are zero for everyone this
+ * month are left out. More employees than fit across a page continue on the next page.
+ */
 require_once('tcpdf/tcpdf.php');
 require_once 'includes/dbconn.php';
 require_once 'includes/org.php';
 require_once 'includes/payroll_report.php';
+
+// Employee columns per page
+define('SHEET_EMPLOYEES_PER_PAGE', 5);
 
 try {
     list($selectedMonth, $selectedYear) = reportPeriod();
@@ -12,24 +20,19 @@ try {
 
     $payroll = loadPayroll($db, $sheet_id);
     $rows = $payroll['rows'];
-    $earningHeads = $payroll['earningHeads'];
-    $deductionHeads = $payroll['deductionHeads'];
     if (empty($rows)) {
         reportStop('No data found for ' . $month . ' ' . $selectedYear);
     }
 
-    // Columns after EMPNO / NAME: key => header
-    $columns = array('BASIC' => 'BASIC', 'LSA' => 'LSA');
-    foreach ($earningHeads as $head) {
-        $columns['e:' . $head] = $head;
+    // key => label; e: / d: keys are salary heads
+    $earningRows = array('BASIC' => 'Basic', 'LSA' => 'LSA');
+    foreach ($payroll['earningHeads'] as $head) {
+        $earningRows['e:' . $head] = $head;
     }
-    $columns['gross'] = 'GROSS';
-    $columns['lwopamt'] = 'LWOP';
-    foreach ($deductionHeads as $head) {
-        $columns['d:' . $head] = $head;
+    $deductionRows = array('lwopamt' => 'LWOP');
+    foreach ($payroll['deductionHeads'] as $head) {
+        $deductionRows['d:' . $head] = $head;
     }
-    $columns['total_deduction'] = 'TOTAL DED';
-    $columns['netAmt'] = 'NET PAY';
 
     $value = function ($row, $key) {
         if (strpos($key, 'e:') === 0) {
@@ -40,74 +43,108 @@ try {
         }
         return (float) $row[$key];
     };
+
+    // Drop components that are zero for every employee (Basic always stays)
+    $used = function ($list) use ($rows, $value) {
+        return array_filter($list, function ($key) use ($rows, $value) {
+            if ($key === 'BASIC') {
+                return true;
+            }
+            foreach ($rows as $row) {
+                if (round($value($row, $key), 2) != 0) {
+                    return true;
+                }
+            }
+            return false;
+        }, ARRAY_FILTER_USE_KEY);
+    };
+    $earningRows = $used($earningRows);
+    $deductionRows = $used($deductionRows);
+
     $fmt = function ($n) {
         return number_format($n, 0, '.', '');
     };
-
-    $tableHead = '<table border="0.5" cellpadding="2" align="center"><thead><tr>'
-        . '<th style="background-color:#D3D3D3;" width="25">EMP NO</th>'
-        . '<th style="background-color:#D3D3D3;" width="80">NAME</th>';
-    foreach ($columns as $title) {
-        $tableHead .= '<th style="background-color:#D3D3D3;">' . htmlspecialchars($title) . '</th>';
-    }
-    $tableHead .= '<th style="background-color:#D3D3D3;" width="45">SIGNATURE</th></tr></thead><tbody>';
-
-    $totalsRow = function ($label, $totals, $bold) use ($columns, $fmt) {
-        $html = '<tr><td colspan="2">' . ($bold ? "<b>$label</b>" : $label) . '</td>';
-        foreach (array_keys($columns) as $key) {
-            $html .= '<td>' . ($bold ? '<b>' . $fmt($totals[$key]) . '</b>' : $fmt($totals[$key])) . '</td>';
-        }
-        return $html . '<td></td></tr>';
+    $esc = function ($s) {
+        return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
     };
 
-    $pdf = new TCPDF('L', PDF_UNIT, 'A4', true, 'UTF-8', false);
+    // Grand totals per row key
+    $keys = array_merge(array_keys($earningRows), array_keys($deductionRows), array('gross', 'total_deduction', 'netAmt'));
+    $totals = array_fill_keys($keys, 0);
+    foreach ($rows as $row) {
+        foreach ($keys as $key) {
+            $totals[$key] += $value($row, $key);
+        }
+    }
+
+    $pdf = new TCPDF('P', PDF_UNIT, 'A4', true, 'UTF-8', false);
     $pdf->setPrintHeader(false);
     $pdf->setPrintFooter(false);
     $pdf->SetMargins(8, 8, 8);
     $pdf->SetAutoPageBreak(true, 10);
-    $pdf->AddPage();
-    $pdf->SetFont('freesans', 'B', 15);
-    $pdf->Cell(0, 8, ORG_NAME, 0, 1, 'C');
-    $pdf->SetFont('freesans', '', 10);
-    $pdf->Cell(0, 6, ORG_ADDRESS, 0, 1, 'C');
-    $pdf->SetFont('freesans', 'B', 13);
-    $pdf->Cell(0, 9, "Salary Statement - $month $selectedYear", 0, 1, 'C');
 
-    $zero = array_fill_keys(array_keys($columns), 0);
-    $grand = $zero;
-    $group = $zero;
-    $currentDesignation = false;
-    $html = '';
+    $cell = 'border:0.3px solid #000000;';
+    $shade = 'background-color:#E6E6E6;';
+    $chunks = array_chunk($rows, SHEET_EMPLOYEES_PER_PAGE);
+    foreach ($chunks as $c => $chunk) {
+        $withTotal = ($c === count($chunks) - 1);
+        $cols = count($chunk) + ($withTotal ? 1 : 0);
+        $wLabel = 16;
+        $wCol = round((100 - $wLabel) / max($cols, 1), 3);
 
-    foreach ($rows as $row) {
-        $designation = $row['DESIGNATION'] !== null ? $row['DESIGNATION'] : 'No designation';
-        if ($designation !== $currentDesignation) {
-            if ($currentDesignation !== false) {
-                $html .= $totalsRow('Group Total', $group, false) . '</tbody></table>';
-                $pdf->writeHTML($html, true, false, false, false, '');
-                $group = $zero;
+        $pdf->AddPage();
+        $pdf->SetFont('freesans', 'B', 14);
+        $pdf->Cell(0, 7, ORG_NAME, 0, 1, 'C');
+        $pdf->SetFont('freesans', '', 9);
+        $pdf->Cell(0, 5, ORG_ADDRESS, 0, 1, 'C');
+        $pdf->SetFont('freesans', 'B', 12);
+        $pdf->Cell(0, 8, "Salary Statement - $month $selectedYear" . (count($chunks) > 1 ? ' (Page ' . ($c + 1) . ' of ' . count($chunks) . ')' : ''), 0, 1, 'C');
+        $pdf->Ln(2);
+        $pdf->SetFont('freesans', '', 7.5);
+
+        // One table row: label, then one cell per employee (+ total)
+        $line = function ($label, $cells, $total, $style = '', $align = 'right') use ($cell, $wLabel, $wCol, $withTotal) {
+            $t = '<tr><td width="' . $wLabel . '%" style="' . $cell . $style . '">' . $label . '</td>';
+            foreach ($cells as $v) {
+                $t .= '<td width="' . $wCol . '%" align="' . $align . '" style="' . $cell . $style . '">' . $v . '</td>';
             }
-            $currentDesignation = $designation;
-            $pdf->SetFont('freesans', 'B', 10);
-            $pdf->Cell(0, 8, 'Designation: ' . $designation, 0, 1, 'L');
-            $pdf->SetFont('freesans', '', 6.5);
-            $html = $tableHead;
-        }
+            if ($withTotal) {
+                $t .= '<td width="' . $wCol . '%" align="' . $align . '" style="' . $cell . $style . 'font-weight:bold;">' . $total . '</td>';
+            }
+            return $t . '</tr>';
+        };
+        $amounts = function ($key) use ($chunk, $value, $fmt) {
+            return array_map(function ($row) use ($key, $value, $fmt) {
+                return $fmt($value($row, $key));
+            }, $chunk);
+        };
+        $section = function ($title) use ($cell, $shade, $cols, $wLabel) {
+            return '<tr><td colspan="' . ($cols + 1) . '" style="' . $cell . $shade . 'font-weight:bold;">' . $title . '</td></tr>';
+        };
 
-        $html .= '<tr><td width="25">' . $row['EMPNO'] . '</td><td width="80" align="left">' . htmlspecialchars($row['NAME']) . '</td>';
-        foreach (array_keys($columns) as $key) {
-            $v = $value($row, $key);
-            $group[$key] += $v;
-            $grand[$key] += $v;
-            $html .= '<td>' . $fmt($v) . '</td>';
+        $html = '<table cellpadding="2.5" cellspacing="0">';
+        $html .= $line('<b>EMP NO</b>', array_map(function ($r) { return '<b>' . $r['EMPNO'] . '</b>'; }, $chunk), '<b>TOTAL</b>', $shade, 'center');
+        $html .= $line('<b>NAME</b>', array_map(function ($r) use ($esc) { return $esc($r['NAME']); }, $chunk), '', $shade, 'center');
+
+        $html .= $section('EARNINGS');
+        foreach ($earningRows as $key => $label) {
+            $html .= $line($esc($label), $amounts($key), $fmt($totals[$key]));
         }
-        $html .= '<td width="45"></td></tr>';
+        $html .= $line('<b>GROSS</b>', array_map(function ($v) { return "<b>$v</b>"; }, $amounts('gross')), $fmt($totals['gross']), 'font-weight:bold;');
+
+        $html .= $section('DEDUCTIONS');
+        foreach ($deductionRows as $key => $label) {
+            $html .= $line($esc($label), $amounts($key), $fmt($totals[$key]));
+        }
+        $html .= $line('<b>TOTAL DEDUCTIONS</b>', array_map(function ($v) { return "<b>$v</b>"; }, $amounts('total_deduction')), $fmt($totals['total_deduction']), 'font-weight:bold;');
+
+        $html .= $line('<b>NET PAY</b>', array_map(function ($v) { return "<b>$v</b>"; }, $amounts('netAmt')), $fmt($totals['netAmt']), $shade . 'font-weight:bold;');
+        $html .= $line('<b>SIGNATURE</b><br><br><br>', array_fill(0, count($chunk), ''), '');
+        $html .= '</table>';
+
+        $pdf->writeHTML($html, true, false, false, false, '');
     }
 
-    $html .= $totalsRow('Group Total', $group, false);
-    $html .= $totalsRow('Grand Total', $grand, true);
-    $html .= '</tbody></table>';
-    $pdf->writeHTML($html, true, false, false, false, '');
     $pdf->Output('PaySlipStatement_' . $month . '_' . $selectedYear . '.pdf', 'I');
 } catch (PDOException $e) {
     die("Database Error: " . $e->getMessage());

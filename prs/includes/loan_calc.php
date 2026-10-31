@@ -9,7 +9,8 @@
  *   PRINFIRST - principal is recovered first; interest accrues on the reducing balance meanwhile
  *               and is recovered afterwards in INT_MONTHS equal installments
  *
- * Principal per month is amount / tenure; the last installment takes whatever is left.
+ * Principal (premium) per month is amount / tenure, or the loan's PREMIUM when one is set;
+ * the last installment takes whatever is left.
  * Installments already recorded (loandet PRIN / INTAMT) drive the state, so a manually
  * changed deduction simply shortens or lengthens the loan.
  */
@@ -73,7 +74,9 @@ function loanNextInstallment($loan, $state)
     $amt = (float) $loan['AMT'];
     $rate = (float) $loan['RATE'];
     $out = $state['outstanding'];
-    $prin = loanSlice($amt, $loan['NOINST'], $out);
+    // A monthly premium set on the loan replaces amount / tenure
+    $premium = isset($loan['PREMIUM']) ? (float) $loan['PREMIUM'] : 0;
+    $prin = $premium > 0 ? loanSlice($premium, 1, $out) : loanSlice($amt, $loan['NOINST'], $out);
 
     switch ($loan['METHOD']) {
         case 'REDUCING':
@@ -97,6 +100,51 @@ function loanIsClosed($loan, $state)
         return false;
     }
     return $loan['METHOD'] !== 'PRINFIRST' || round($state['accrued'] - $state['intPaid'], 2) <= 0;
+}
+
+/*
+ * An employee's loans as they stand on a payslip: taken by the payslip month, still running
+ * or deducted in it. Each row: type, taken (date), amount, prin / int deducted this month,
+ * balance after this month, installments left.
+ */
+function loanSlipSummary($db, $empno, $sheet_id, $monthEnd)
+{
+    $stmt = $db->prepare("
+        SELECT l.*, lt.NAME AS TYPENAME, lt.INT_HEAD
+        FROM loanmast l LEFT JOIN loantype lt ON lt.CODE = l.LTYPE
+        WHERE l.EMPNO = :empno AND l.AMT > 0 AND (l.DTE IS NULL OR l.DTE <= :month_end)
+        ORDER BY lt.SORT, l.DTE, l.LNO");
+    $stmt->execute(array(':empno' => $empno, ':month_end' => $monthEnd));
+    $hist = $db->prepare("SELECT * FROM loandet WHERE LNO = :lno AND (DTE IS NULL OR DTE <= :month_end) ORDER BY SLNO");
+
+    $rows = array();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $loan) {
+        $hist->execute(array(':lno' => $loan['LNO'], ':month_end' => $monthEnd));
+        $history = $hist->fetchAll(PDO::FETCH_ASSOC);
+        $loan = loanNormalize($loan, array('INT_HEAD' => $loan['INT_HEAD']));
+
+        $prin = $int = 0.0;
+        foreach ($history as $h) {
+            if ((int) $h['SHEET_ID'] === (int) $sheet_id) {
+                $prin += $h['PRIN'] !== null ? (float) $h['PRIN'] : (float) $h['INSTAMT'];
+                $int += (float) $h['INTAMT'];
+            }
+        }
+        $state = loanState($loan, $history);
+        $closed = loanIsClosed($loan, $state);
+        if (($closed || (int) $loan['FLAG'] === 1) && $prin + $int <= 0) {
+            continue; // finished before this month
+        }
+        $left = 0;
+        foreach (loanSchedule($loan, $history) as $s) {
+            if ($s['status'] === 'Pending') $left++;
+        }
+        $rows[] = array(
+            'code' => $loan['LTYPE'], 'type' => $loan['TYPENAME'] ?: $loan['LTYPE'], 'taken' => $loan['DTE'], 'amount' => (float) $loan['AMT'],
+            'prin' => $prin, 'int' => $int, 'balance' => $state['outstanding'], 'left' => $closed ? 0 : $left,
+        );
+    }
+    return $rows;
 }
 
 /*

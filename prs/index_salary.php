@@ -137,7 +137,11 @@ if ((!isset($_SESSION['user']))) {
                                             <div class="grid space-y-2">
                                                 <label for="flexRadioDefault9" class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
                                                     <input type="radio" name="select" id="flexRadioDefault9" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none border-gray-700 checked:bg-blue-500 checked:border-blue-500">
-                                                    <label for="flexRadioDefault9" class="form-check-label ml-2">Pay Slip</label>
+                                                    <label for="flexRadioDefault9" class="form-check-label ml-2">Pay Slip (Modern)</label>
+                                                </label>
+                                                <label for="flexRadioDefault11" class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
+                                                    <input type="radio" name="select" id="flexRadioDefault11" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none border-gray-700 checked:bg-blue-500 checked:border-blue-500">
+                                                    <label for="flexRadioDefault11" class="form-check-label ml-2">Pay Slip (Classic)</label>
                                                 </label>
 
                                                 <?php
@@ -149,20 +153,19 @@ if ((!isset($_SESSION['user']))) {
                                                     </label> -->
                                                     <label class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
                                                         <input type="radio" name="select" id="flexRadioDefault1" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none border-gray-700 checked:bg-blue-500 checked:border-blue-500">
-                                                        <label for="flexRadioDefault1" class="form-check-label ml-2">Salary Sheet</label>
-                                                    </label>
-                                                    <label for="flexRadioDefault7" class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
+                                                        <label for="flexRadioDefault1" class="form-check-label ml-2">Payroll Data</label>
+                                                    </label>                                                    <label for="flexRadioDefault7" class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
                                                         <input type="radio" name="select" id="flexRadioDefault7" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none border-gray-700 checked:bg-blue-500 checked:border-blue-500">
                                                         <label for="flexRadioDefault7" class="form-check-label ml-2">Salary Data</label>
                                                     </label>
-                                                    <label class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
+                                                    <!-- <label class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
                                                         <input type="radio" name="select" id="flexRadioDefault3" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none border-gray-700 checked:bg-blue-500 checked:border-blue-500">
                                                         <label for="flexRadioDefault3" class="form-check-label ml-2">ESIC</label>
                                                     </label>
                                                     <label class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
                                                         <input type="radio" name="select" id="flexRadioDefault2" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none border-gray-700 checked:bg-blue-500 checked:border-blue-500">
                                                         <label for="flexRadioDefault2" class="form-check-label ml-2">PF</label>
-                                                    </label>
+                                                    </label> -->
                                                     <!-- <label class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
                                                         <input type="radio" name="select" id="flexRadioDefault4" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none border-gray-700 checked:bg-blue-500 checked:border-blue-500">
                                                         <label for="flexRadioDefault4" class="form-check-label ml-2">Letter</label>
@@ -195,16 +198,16 @@ if ((!isset($_SESSION['user']))) {
                                                     <label class="form-label">Bank Reports</label>
                                                     <label class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
                                                         <input type="radio" name="select" id="flexRadioDefault4" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none border-gray-700 checked:bg-blue-500 checked:border-blue-500">
-                                                        <label for="flexRadioDefault4" class="form-check-label ml-2">Letter</label>
+                                                        <label for="flexRadioDefault4" class="form-check-label ml-2">Advice Letter</label>
                                                     </label>
-                                                    <label class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
+                                                    <!-- <label class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
                                                         <input type="radio" name="select" id="flexRadioDefault6" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none border-gray-700 checked:bg-blue-500 checked:border-blue-500">
                                                         <label for="flexRadioDefault6" class="form-check-label ml-2">For Bank</label>
                                                     </label>
                                                     <label class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
                                                         <input type="radio" name="select" id="flexRadioDefault5" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none border-gray-700 checked:bg-blue-500 checked:border-blue-500">
                                                         <label for="flexRadioDefault5" class="form-check-label ml-2">Bank Software</label>
-                                                    </label>
+                                                    </label> -->
 
                                                     <!-- <label for="flexRadioDefault8" class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
                                                         <input type="radio" name="select" id="flexRadioDefault8" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none border-gray-700 checked:bg-blue-500 checked:border-blue-500">
@@ -224,11 +227,11 @@ if ((!isset($_SESSION['user']))) {
                                                 <?php
                                                 if ($_SESSION['user'] == 'Admin') {
                                                 ?>
-                                                    <label class="form-label">Leave Reports</label>
+                                                    <!-- <label class="form-label">Leave Reports</label>
                                                     <label class="max-w-xs mb-2 flex p-3 block w-64 bg-white border border-cyan-600 rounded-none text-sm">
                                                         <input type="radio" name="select" id="flexRadioDefault10" class="shrink-0 mt-0.5 border-gray-200 rounded-full text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none border-gray-700 checked:bg-blue-500 checked:border-blue-500">
                                                         <label for="flexRadioDefault10" class="form-check-label ml-2">Leave Record</label>
-                                                    </label>
+                                                    </label> -->
                                                 <?php
                                                 }
                                                 ?>
@@ -271,8 +274,9 @@ if ((!isset($_SESSION['user']))) {
             }
             var pageMapping = {
                 'Leave Record': 'leaveRecord.php',
-                'Salary Sheet': 'paySlipStatement.php',
-                'Pay Slip': 'paySlip.php',
+                'Payroll Summary': 'paySlipStatement.php',
+                'Pay Slip (Modern)': 'paySlip.php',
+                'Pay Slip (Classic)': 'paySlipClassic.php',
                 'PF': 'pf.php',
                 'ESIC': 'esi.php',
                 'Letter': 'letter.php',
@@ -286,8 +290,7 @@ if ((!isset($_SESSION['user']))) {
             var pageUrl = pageMapping[selectedRadio];
 
             if (pageUrl) {
-                var redirectUrl = pageUrl + '?month=' + selectedMonth + '&year=' + selectedYear;
-                window.open(redirectUrl, '_blank');
+                var redirectUrl = pageUrl + '?month=' + selectedMonth + '&year=' + selectedYear;                window.open(redirectUrl, '_blank');
             } else {
                 alert('Please select any report option');
             }
