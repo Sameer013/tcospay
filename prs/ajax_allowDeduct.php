@@ -1,6 +1,21 @@
 <?php
 header('Content-Type: application/json');
 
+// ?assigned=1&empno=N: the components this employee already has (master id and name), so the
+// Add form can leave them out
+if (isset($_GET['assigned'])) {
+    try {
+        require_once 'includes/dbconn.php';
+        $stmt = $db->prepare("SELECT CODE, DESCR FROM indall WHERE EMPNO = :empno");
+        $stmt->execute(array(':empno' => trim($_GET['empno'] ?? '')));
+        echo json_encode(array('assigned' => $stmt->fetchAll(PDO::FETCH_ASSOC)));
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(array('assigned' => array(), 'error' => $e->getMessage()));
+    }
+    exit;
+}
+
 $requestData = $_REQUEST;
 $columns = array(
     0 => 'i.EMPNO',

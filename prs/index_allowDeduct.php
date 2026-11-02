@@ -5,7 +5,7 @@ if ((!isset($_SESSION['user']))) {
     die('Please Login First...<br><br>Redirectiing in a sec to Login Page');
 }
 require_once 'includes/dbconn.php';
-$componentStmt = $db->prepare("SELECT code, descr FROM indallmast ORDER BY code");
+$componentStmt = $db->prepare("SELECT id, code, descr FROM indallmast ORDER BY code");
 $componentStmt->execute();
 $salaryComponents = $componentStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
@@ -206,7 +206,7 @@ $salaryComponents = $componentStmt->fetchAll(PDO::FETCH_ASSOC);
                                                 <select name="txt_desc" id="txt_desc" class="form-control w-full" style="height: 40px; padding: 10px;">
                                                     <option value="" disabled selected>Select component</option>
                                                     <?php foreach ($salaryComponents as $component) : ?>
-                                                    <option value="<?= htmlspecialchars($component['code'], ENT_QUOTES, 'UTF-8') ?>">
+                                                    <option value="<?= htmlspecialchars($component['code'], ENT_QUOTES, 'UTF-8') ?>" data-id="<?= (int) $component['id'] ?>">
                                                         <?= htmlspecialchars($component['code'] . ' - ' . $component['descr'], ENT_QUOTES, 'UTF-8') ?>
                                                     </option>
                                                     <?php endforeach; ?>
@@ -386,6 +386,33 @@ $salaryComponents = $componentStmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
 
+    // Hides the components this employee already has, so the same one can't be added twice.
+    // keepDescr (edit mode) stays available: it is the record being edited.
+    function filterComponents(empno, keepDescr) {
+        const options = $("#txt_desc option[value!='']");
+        options.prop("hidden", false).prop("disabled", false);
+        $("#txt_desc option.no-components").remove();
+        return $.getJSON('ajax_allowDeduct.php', { assigned: 1, empno: empno }).then(function(res) {
+            const ids = new Set();
+            const names = new Set();
+            (res.assigned || []).forEach(function(a) {
+                ids.add(String(a.CODE));
+                names.add(String(a.DESCR || '').trim().toLowerCase());
+            });
+            const keep = String(keepDescr || '').trim().toLowerCase();
+            let left = 0;
+            options.each(function() {
+                const name = String(this.value).trim().toLowerCase();
+                const taken = name !== keep && (ids.has(String($(this).data('id'))) || names.has(name));
+                $(this).prop("hidden", taken).prop("disabled", taken);
+                if (!taken) left++;
+            });
+            if (!left) {
+                $("#txt_desc").append('<option class="no-components" value="" disabled>All components are already added for this employee</option>');
+            }
+        });
+    }
+
     function add_new() {
         $("#btn_save").show();
         $("#btn_update").hide();
@@ -402,6 +429,9 @@ $salaryComponents = $componentStmt->fetchAll(PDO::FETCH_ASSOC);
         $("#txt_empname").val(empno);
         $("input[name='txt_allow'][value='a']").prop("checked", true);
         $("input[name='txt_stillvalid'][value='Y']").prop("checked", true);
+        filterComponents(empno, null).then(function() {
+            $("#txt_desc").val('');
+        });
         return true;
     }
 
@@ -472,6 +502,10 @@ $salaryComponents = $componentStmt->fetchAll(PDO::FETCH_ASSOC);
                 $("#txt_empname").val(res.EMPNO);
                 $("#txt_empname").prop("disabled", true);
                 $("#txt_desc").val(res.DESCR).data("original-descr", res.DESCR);
+                // Others the employee has stay hidden, so an edit can't turn into a duplicate
+                filterComponents(res.EMPNO, res.DESCR).then(function() {
+                    $("#txt_desc").val(res.DESCR);
+                });
                 $("input[name='txt_allow'][value='" + res.ALLREDNFLAG + "']").prop("checked", true);
                 $("#txt_value").val(res.ALLOWANCE);
                 $("#txt_flag").val(res.PRCAMTFLAG);

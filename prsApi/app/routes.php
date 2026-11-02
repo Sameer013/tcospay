@@ -1401,6 +1401,13 @@ return function (App $app) {
 					throw new Exception("Salary component '" . $users['desc'] . "' not found in the component master");
 				}
 
+				// One row per component per employee
+				$dupStmt = $db->prepare("SELECT COUNT(*) FROM indall WHERE EMPNO = :empno AND (DESCR = :descr OR CODE = :code)");
+				$dupStmt->execute([':empno' => $empno, ':descr' => $users['desc'], ':code' => $codeId]);
+				if ($dupStmt->fetchColumn() > 0) {
+					throw new Exception("'" . $users['desc'] . "' is already added for this employee; edit that entry instead");
+				}
+
 				$sql = "INSERT INTO indall(EMPNO, CODE, DESCR, PRCAMTFLAG, ALLREDNFLAG, ALLOWANCE, ALLREDNCONTINUITY)
 						VALUES(:empno, :code, :descr, :flag, :allow, :value, :stillvalid)";
 
@@ -1439,9 +1446,30 @@ return function (App $app) {
 					$jsonBody = json_decode($rawBody, true);
 					$users = is_array($jsonBody) ? $jsonBody : [];
 				}
-			$sql = "UPDATE indall SET DESCR=:txt_desc, PRCAMTFLAG=:txt_flag, ALLREDNFLAG=:txt_allow, ALLOWANCE=:txt_value, ALLREDNCONTINUITY=:txt_stillvalid WHERE EMPNO=:txt_code AND DESCR=:desc";
-				$stmt = $db->prepare($sql);
 				$code = $users['code'] ?? $args['CODE'];
+
+				// Switching to another component: it must exist and the employee must not have it already
+				$codeId = null;
+				if (isset($users['desc']) && $users['desc'] !== $args['descr']) {
+					$lookupStmt = $db->prepare("SELECT id FROM indallmast WHERE code = :code");
+					$lookupStmt->execute([':code' => $users['desc']]);
+					$codeId = $lookupStmt->fetchColumn();
+					if ($codeId === false) {
+						throw new Exception("Salary component '" . $users['desc'] . "' not found in the component master");
+					}
+					$dupStmt = $db->prepare("SELECT COUNT(*) FROM indall WHERE EMPNO = :empno AND (DESCR = :descr OR CODE = :code)");
+					$dupStmt->execute([':empno' => $code, ':descr' => $users['desc'], ':code' => $codeId]);
+					if ($dupStmt->fetchColumn() > 0) {
+						throw new Exception("'" . $users['desc'] . "' is already added for this employee");
+					}
+				}
+
+			$sql = "UPDATE indall SET DESCR=:txt_desc, PRCAMTFLAG=:txt_flag, ALLREDNFLAG=:txt_allow, ALLOWANCE=:txt_value, ALLREDNCONTINUITY=:txt_stillvalid"
+				. ($codeId ? ", CODE=:master_id" : "") . " WHERE EMPNO=:txt_code AND DESCR=:desc";
+				$stmt = $db->prepare($sql);
+				if ($codeId) {
+					$stmt->bindValue(":master_id", $codeId);
+				}
 				$stmt->bindParam(":txt_code", $code);
 				$stmt->bindParam(":desc", $args['descr']);
 				$stmt->bindParam(":txt_desc", $users['desc']);
