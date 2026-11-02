@@ -18,7 +18,7 @@
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_before_insert` BEFORE INSERT ON `attdata` FOR EACH ROW begin
+/*!50003 CREATE*/ /*!50017 DEFINER=`jpspay`@`localhost`*/ /*!50003 TRIGGER `trg_before_insert` BEFORE INSERT ON `attdata` FOR EACH ROW begin
 declare v_dtm datetime;
 declare v_inout varchar(7);
 declare v_shift varchar(2);
@@ -123,7 +123,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_before_insert_copy1` BEFORE INSERT ON `attdata_org` FOR EACH ROW begin
+/*!50003 CREATE*/ /*!50017 DEFINER=`jpspay`@`localhost`*/ /*!50003 TRIGGER `trg_before_insert_copy1` BEFORE INSERT ON `attdata_org` FOR EACH ROW begin
 declare v_dtm datetime;
 declare v_inout varchar(7);
 declare v_shift varchar(2);
@@ -228,7 +228,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `late_insert` AFTER INSERT ON `latemuster` FOR EACH ROW BEGIN
+/*!50003 CREATE*/ /*!50017 DEFINER=`jpspay`@`localhost`*/ /*!50003 TRIGGER `late_insert` AFTER INSERT ON `latemuster` FOR EACH ROW BEGIN
     DECLARE emp_id INT;
     DECLARE cl INT;
     DECLARE wp INT;
@@ -288,7 +288,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `leave_det_ins_trg` BEFORE INSERT ON `leaveapply` FOR EACH ROW begin
+/*!50003 CREATE*/ /*!50017 DEFINER=`jpspay`@`localhost`*/ /*!50003 TRIGGER `leave_det_ins_trg` BEFORE INSERT ON `leaveapply` FOR EACH ROW begin
 declare v_cl,v_ml,v_el double default 0;
 declare v_sex char(1) default 'M';
 declare v_sanc,v_wp double default 0;
@@ -350,7 +350,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `leave_aft_upd_trg` AFTER UPDATE ON `leaveapply` FOR EACH ROW BEGIN
+/*!50003 CREATE*/ /*!50017 DEFINER=`jpspay`@`localhost`*/ /*!50003 TRIGGER `leave_aft_upd_trg` AFTER UPDATE ON `leaveapply` FOR EACH ROW BEGIN
     IF NEW.STATUS = 'Approve' THEN
         INSERT INTO leavedet (
             EMPNO, 
@@ -387,7 +387,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `leave_det_upd_trg` BEFORE UPDATE ON `leavedet` FOR EACH ROW begin
+/*!50003 CREATE*/ /*!50017 DEFINER=`jpspay`@`localhost`*/ /*!50003 TRIGGER `leave_det_upd_trg` BEFORE UPDATE ON `leavedet` FOR EACH ROW begin
                signal sqlstate '45000' set message_text = 'Updation not allowed for sanctioned leave. Delete and recreate';
 end */;;
 DELIMITER ;
@@ -404,7 +404,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `leave_det_del_trg` BEFORE DELETE ON `leavedet` FOR EACH ROW begin
+/*!50003 CREATE*/ /*!50017 DEFINER=`jpspay`@`localhost`*/ /*!50003 TRIGGER `leave_det_del_trg` BEFORE DELETE ON `leavedet` FOR EACH ROW begin
 declare v_cl,v_ml,v_el double default 0;
 declare v_sex char(1) default 'M';
 declare v_sanc,v_wp double default 0;
@@ -433,7 +433,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `leave_det_ins_trg_copy1` BEFORE INSERT ON `leavedet_copy1` FOR EACH ROW begin
+/*!50003 CREATE*/ /*!50017 DEFINER=`jpspay`@`localhost`*/ /*!50003 TRIGGER `leave_det_ins_trg_copy1` BEFORE INSERT ON `leavedet_copy1` FOR EACH ROW begin
 declare v_cl,v_ml,v_el double default 0;
 declare v_sex char(1) default 'M';
 declare v_sanc,v_wp double default 0;
@@ -495,7 +495,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `leave_det_upd_trg_copy1` BEFORE UPDATE ON `leavedet_copy1` FOR EACH ROW begin
+/*!50003 CREATE*/ /*!50017 DEFINER=`jpspay`@`localhost`*/ /*!50003 TRIGGER `leave_det_upd_trg_copy1` BEFORE UPDATE ON `leavedet_copy1` FOR EACH ROW begin
                signal sqlstate '45000' set message_text = 'Updation not allowed for sanctioned leave. Delete and recreate';
 end */;;
 DELIMITER ;
@@ -512,7 +512,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `leave_det_del_trg_copy1` BEFORE DELETE ON `leavedet_copy1` FOR EACH ROW begin
+/*!50003 CREATE*/ /*!50017 DEFINER=`jpspay`@`localhost`*/ /*!50003 TRIGGER `leave_det_del_trg_copy1` BEFORE DELETE ON `leavedet_copy1` FOR EACH ROW begin
 declare v_cl,v_ml,v_el double default 0;
 declare v_sex char(1) default 'M';
 declare v_sanc,v_wp double default 0;
@@ -541,7 +541,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `late_leave_trg` AFTER INSERT ON `sheet_det` FOR EACH ROW BEGIN
+/*!50003 CREATE*/ /*!50017 DEFINER=`jpspay`@`localhost`*/ /*!50003 TRIGGER `late_leave_trg` AFTER INSERT ON `sheet_det` FOR EACH ROW BEGIN
     DECLARE late_count INT DEFAULT 0;
     DECLARE cl_balance INT DEFAULT 0;
     DECLARE leave_deductions INT DEFAULT 0;
@@ -610,7 +610,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` FUNCTION `dsg_empcount`(`p_dsgcode` INT) RETURNS int
+CREATE DEFINER=`jpspay`@`localhost` FUNCTION `dsg_empcount`(`p_dsgcode` INT) RETURNS int
 BEGIN
 	declare tmp_count int default 0;
 	select count(*) into tmp_count from empmast where dsgcode=p_dsgcode;
@@ -630,7 +630,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` FUNCTION `get_advInst`(`empno_param` INT(3)) RETURNS int
+CREATE DEFINER=`jpspay`@`localhost` FUNCTION `get_advInst`(`empno_param` INT(3)) RETURNS int
     DETERMINISTIC
 BEGIN
     DECLARE advAmt DECIMAL(10, 2);
@@ -657,7 +657,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` FUNCTION `get_arrearAmt`(`empno_param` INT(4), `sheet_id` INT(2)) RETURNS decimal(10,2)
+CREATE DEFINER=`jpspay`@`localhost` FUNCTION `get_arrearAmt`(`empno_param` INT(4), `sheet_id` INT(2)) RETURNS decimal(10,2)
     DETERMINISTIC
 BEGIN
     DECLARE arrearAmt DECIMAL(10, 2); 
@@ -690,7 +690,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`%` FUNCTION `get_gross`(`basic` DECIMAL, `grdpay` DECIMAL, `da` DECIMAL, `hra` DECIMAL, `spl` DECIMAL) RETURNS decimal(10,2)
+CREATE DEFINER=`jpspay`@`localhost` FUNCTION `get_gross`(`basic` DECIMAL, `grdpay` DECIMAL, `da` DECIMAL, `hra` DECIMAL, `spl` DECIMAL) RETURNS decimal(10,2)
 BEGIN
 	
 	declare gross decimal(10,2) default 0;
@@ -715,7 +715,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` FUNCTION `get_grossAmt`(`trnsno` INT(3), `daysinmonth` INT(2)) RETURNS decimal(10,2)
+CREATE DEFINER=`jpspay`@`localhost` FUNCTION `get_grossAmt`(`trnsno` INT(3), `daysinmonth` INT(2)) RETURNS decimal(10,2)
 BEGIN
     DECLARE grossAmt DECIMAL(10, 2);
 
@@ -739,7 +739,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` FUNCTION `get_lsaAmt`(`empno` INT(5)) RETURNS decimal(10,2)
+CREATE DEFINER=`jpspay`@`localhost` FUNCTION `get_lsaAmt`(`empno` INT(5)) RETURNS decimal(10,2)
 BEGIN
     DECLARE LSA DECIMAL(10,2) DEFAULT 0;
     
@@ -771,7 +771,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` FUNCTION `get_lwopAmt`(`trnsno` INT(3), `daysinmonth` INT(2)) RETURNS decimal(10,2)
+CREATE DEFINER=`jpspay`@`localhost` FUNCTION `get_lwopAmt`(`trnsno` INT(3), `daysinmonth` INT(2)) RETURNS decimal(10,2)
     DETERMINISTIC
 BEGIN
     DECLARE lwopAmt DECIMAL(10, 2);
@@ -796,7 +796,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` FUNCTION `get_mnth`(`sheetId` INT(2)) RETURNS int
+CREATE DEFINER=`jpspay`@`localhost` FUNCTION `get_mnth`(`sheetId` INT(2)) RETURNS int
     DETERMINISTIC
 BEGIN
     DECLARE Month INT;
@@ -821,7 +821,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` FUNCTION `get_sheetid`(`selectedMonth` INT(2), `selectedYear` INT(4)) RETURNS int
+CREATE DEFINER=`jpspay`@`localhost` FUNCTION `get_sheetid`(`selectedMonth` INT(2), `selectedYear` INT(4)) RETURNS int
 BEGIN
     DECLARE sheetid INT;
     
@@ -850,7 +850,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` FUNCTION `get_taAmt`(`empno_param` INT(5), `sheet_id_param` INT) RETURNS decimal(10,2)
+CREATE DEFINER=`jpspay`@`localhost` FUNCTION `get_taAmt`(`empno_param` INT(5), `sheet_id_param` INT) RETURNS decimal(10,2)
 BEGIN
     DECLARE taAmt DECIMAL(10, 2);
 
@@ -874,7 +874,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` FUNCTION `get_yr`(`sheetId` INT(5)) RETURNS int
+CREATE DEFINER=`jpspay`@`localhost` FUNCTION `get_yr`(`sheetId` INT(5)) RETURNS int
 BEGIN
     DECLARE Year INT;
 
@@ -898,7 +898,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`192.168.%` FUNCTION `mnthndays`(`mnthyr` VARCHAR(8)) RETURNS int
+CREATE DEFINER=`jpspay`@`localhost` FUNCTION `mnthndays`(`mnthyr` VARCHAR(8)) RETURNS int
 BEGIN
 	declare yr int default 0;
 	declare mnth int default 0;
@@ -935,7 +935,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`192.168.%` FUNCTION `myfunc`(`p_tmax` TIME, `p_tmin` TIME) RETURNS varchar(10) CHARSET latin1
+CREATE DEFINER=`jpspay`@`localhost` FUNCTION `myfunc`(`p_tmax` TIME, `p_tmin` TIME) RETURNS varchar(10) CHARSET latin1
 BEGIN	
 
 
@@ -963,7 +963,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`192.168.%` FUNCTION `ndays`(`mnth` INT, `yr` INT) RETURNS int
+CREATE DEFINER=`jpspay`@`localhost` FUNCTION `ndays`(`mnth` INT, `yr` INT) RETURNS int
 BEGIN
 	return day(LAST_DAY(concat(yr,'-',mnth,'-01')));
 END ;;
@@ -981,7 +981,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `dup_handler`()
+CREATE DEFINER=`jpspay`@`localhost` PROCEDURE `dup_handler`()
 BEGIN
 	declare dup_count int default 0;
 	declare dup_pk condition for SQLSTATE '23000';
@@ -1008,7 +1008,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `empLeave`(IN `employee_id` INT(5), IN `leave_to_deduct` INT(2))
+CREATE DEFINER=`jpspay`@`localhost` PROCEDURE `empLeave`(IN `employee_id` INT(5), IN `leave_to_deduct` INT(2))
 BEGIN
     DECLARE current_balance INT;
 
@@ -1036,7 +1036,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `empLeaveBal`()
+CREATE DEFINER=`jpspay`@`localhost` PROCEDURE `empLeaveBal`()
 BEGIN
     -- Update accleave for LeaveCode = 3
     UPDATE empmast e
@@ -1136,7 +1136,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `emptree`(IN `p_empno` INT)
+CREATE DEFINER=`jpspay`@`localhost` PROCEDURE `emptree`(IN `p_empno` INT)
 BEGIN
 DECLARE v_plist text default '';
 DECLARE v_empno,v_curempno,v_prnt int;	
@@ -1165,7 +1165,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `lateDeducation`(IN `EmpCode` INT(5), IN `CL` INT(2), IN `WP` INT(2), IN `Month1` INT(2), IN `Year1` INT(4))
+CREATE DEFINER=`jpspay`@`localhost` PROCEDURE `lateDeducation`(IN `EmpCode` INT(5), IN `CL` INT(2), IN `WP` INT(2), IN `Month1` INT(2), IN `Year1` INT(4))
 BEGIN
     DECLARE emp_id INT;
     DECLARE cl_balance INT; -- Current leave balance
@@ -1227,7 +1227,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `monthSal`(IN `p_trnsno` INT(4), IN `p_sheet_id` INT(3), IN `p_daysInMonth` INT(2), IN `p_end_id` INT(3), IN `p_empno` INT(5))
+CREATE DEFINER=`jpspay`@`localhost` PROCEDURE `monthSal`(IN `p_trnsno` INT(4), IN `p_sheet_id` INT(3), IN `p_daysInMonth` INT(2), IN `p_end_id` INT(3), IN `p_empno` INT(5))
 BEGIN 
     DECLARE v_gross DECIMAL(10, 2);
     DECLARE v_lwop DECIMAL(10, 2);
@@ -1291,7 +1291,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_advPayment`(IN `p_empNo` INT)
+CREATE DEFINER=`jpspay`@`localhost` PROCEDURE `sp_advPayment`(IN `p_empNo` INT)
 BEGIN
     INSERT INTO loandet (LNO, SLNO, DTE, INSTAMT, FLAG)
     SELECT 
@@ -1405,7 +1405,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_curempcount`()
+CREATE DEFINER=`jpspay`@`localhost` PROCEDURE `sp_curempcount`()
 BEGIN
 	declare v_count int default 0;
 	declare v_amt float;
@@ -1437,7 +1437,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_gensheet`(`v_mnth` SMALLINT, `v_yr` SMALLINT)
+CREATE DEFINER=`jpspay`@`localhost` PROCEDURE `sp_gensheet`(`v_mnth` SMALLINT, `v_yr` SMALLINT)
 BEGIN
 	declare sht_id int(11) UNSIGNED DEFAULT NULL;
 	declare mdays smallint;
@@ -1464,7 +1464,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_gensheetdaily`(IN `v_mnth` SMALLINT, IN `v_yr` SMALLINT)
+CREATE DEFINER=`jpspay`@`localhost` PROCEDURE `sp_gensheetdaily`(IN `v_mnth` SMALLINT, IN `v_yr` SMALLINT)
 BEGIN
 declare vdy int;
 delete from attnddet where month(dt)=v_mnth and year(dt)=v_yr;

@@ -274,12 +274,12 @@ if ((!isset($_SESSION['user']))) {
             }
             var pageMapping = {
                 'Leave Record': 'leaveRecord.php',
-                'Payroll Summary': 'paySlipStatement.php',
+                'Payroll Data': 'paySlipStatement.php',
                 'Pay Slip (Modern)': 'paySlip.php',
                 'Pay Slip (Classic)': 'paySlipClassic.php',
                 'PF': 'pf.php',
                 'ESIC': 'esi.php',
-                'Letter': 'letter.php',
+                'Advice Letter': 'letter.php',
                 'For Bank': 'forBank.php',
                 'Bank Software': 'bankSoftware.php',
                 'Statement': 'statement.php',

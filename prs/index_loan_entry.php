@@ -129,7 +129,7 @@ $loanMethods = loanMethods();
                                                 <th>Rate %</th>
                                                 <th>Interest Method</th>
                                                 <th>Tenure (months)</th>
-                                                <th>Monthly Premium</th>
+                                                <th>Monthly Principal</th>
                                                 <th>Balance</th>
                                                 <th>Status</th>
                                                 <th>Action</th>
@@ -320,7 +320,7 @@ $loanMethods = loanMethods();
                                         <input id="txt_nofinst" name="txt_nofinst" type="number" min="1" step="1" class="form-control" placeholder="No of monthly installments">
                                     </div>
                                     <div class="col-span-12 sm:col-span-6">
-                                        <label for="txt_premium" class="form-label">Monthly Premium</label>
+                                        <label for="txt_premium" class="form-label">Monthly Principal</label>
                                         <input id="txt_premium" name="txt_premium" type="number" min="0" step="0.01" class="form-control" placeholder="Blank = Amount / Tenure">
                                         <div class="text-xs text-slate-500 mt-1">Change it any time; the new premium is deducted from the next payroll run. Months already deducted stay as they are.</div>
                                     </div>
@@ -338,7 +338,7 @@ $loanMethods = loanMethods();
                                     </div>
                                     <div class="col-span-12 sm:col-span-6" id="intMonthsField">
                                         <label for="txt_intMonths" class="form-label">Recover Interest Over (months)</label>
-                                        <input id="txt_intMonths" name="txt_intMonths" type="number" min="1" step="1" class="form-control" placeholder="Months after premium is repaid">
+                                        <input id="txt_intMonths" name="txt_intMonths" type="number" min="1" step="1" class="form-control" placeholder="Months after principle is repaid">
                                     </div>
                                     <div class="col-span-12 sm:col-span-6">
                                         <label class="form-label">First Month Deduction</label>
@@ -354,7 +354,7 @@ $loanMethods = loanMethods();
                                                         <tr>
                                                             <th>Sl No</th>
                                                             <th>Month</th>
-                                                            <th>Premium</th>
+                                                            <th>Principal</th>
                                                             <th>Interest</th>
                                                             <th>Total</th>
                                                             <th>Balance</th>
@@ -568,10 +568,10 @@ $loanMethods = loanMethods();
         }
         const prin = Math.min(amt, premium > 0 ? premium : Math.round(amt / n * 100) / 100);
         const int = (method === 'REDUCING' || method === 'FLAT') ? Math.round(amt * rate / 1200 * 100) / 100 : 0;
-        const head = type.PRIN_HEAD || 'Premium';
-        let text = head + (/loan$/i.test(head) ? ' Premium ' : ' ') + prin.toFixed(2);
+        const head = type.PRIN_HEAD || 'Principal';
+        let text = head + (/loan$/i.test(head) ? ' Principal ' : ' ') + prin.toFixed(2);
         if (hasInt) text += ' + ' + type.INT_HEAD + ' ' + int.toFixed(2) + ' = ' + (prin + int).toFixed(2);
-        if (method === 'PRINFIRST') text += ' (interest after premium)';
+        if (method === 'PRINFIRST') text += ' (interest after principal)';
         $("#firstInst").text(text);
     }
     var dtable = $('#table').DataTable({
