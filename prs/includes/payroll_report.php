@@ -153,6 +153,32 @@ function loadPayroll($db, $sheet_id, $empno = null)
     );
 }
 
+/*
+ * Statement for employee details only the payslips print: AADHAR, BANK_BRANCH, DOJ.
+ * AADHAR and BANK_BRANCH come from migrations; a column that isn't there yet reads as NULL,
+ * so the payslips keep working on a database that hasn't been migrated.
+ * Execute with array(':empno' => ...).
+ */
+function slipExtrasStatement($db)
+{
+    $have = $db->query("SELECT COLUMN_NAME FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = 'empmast' AND COLUMN_NAME IN ('AADHAR', 'BANK_BRANCH')")
+        ->fetchAll(PDO::FETCH_COLUMN);
+    $have = array_map('strtoupper', $have);
+    $cols = array();
+    foreach (array('AADHAR', 'BANK_BRANCH') as $col) {
+        $cols[] = in_array($col, $have) ? $col : "NULL AS $col";
+    }
+    return $db->prepare("SELECT " . implode(', ', $cols) . ", DOJ FROM empmast WHERE EMPNO = :empno");
+}
+
+// "State Bank of India, Telco Branch" (just the bank when no branch is entered)
+function slipBankWithBranch($row)
+{
+    $branch = isset($row['BANK_BRANCH']) ? trim((string) $row['BANK_BRANCH']) : '';
+    return trim((string) $row['BANK']) . ($branch !== '' ? ', ' . $branch : '');
+}
+
 // Amount of one component for a row (0 when the employee doesn't have it).
 function headAmount($row, $type, $head)
 {

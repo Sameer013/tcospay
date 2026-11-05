@@ -37,13 +37,8 @@ if (empty($rows)) {
     reportStop("No data found for " . $month . " " . $selectedYear);
 }
 
-// Aadhaar / joining date are only needed here; AADHAR comes from migrations/2026_10_31_payslip_staff_aadhar.sql
-try {
-    $empExtra = $db->prepare("SELECT AADHAR, DOJ FROM empmast WHERE EMPNO = :empno");
-    $empExtra->execute(array(':empno' => 0));
-} catch (PDOException $e) {
-    $empExtra = $db->prepare("SELECT NULL AS AADHAR, DOJ FROM empmast WHERE EMPNO = :empno");
-}
+// Aadhaar, bank branch and joining date are only needed here
+$empExtra = slipExtrasStatement($db);
 
 $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, 'A4', true, 'UTF-8', false);
 $pdf->SetPrintHeader(false);
@@ -54,7 +49,7 @@ $pdf->SetTitle('Payslip ' . $monthLong . ' ' . $selectedYear);
 
 foreach ($rows as $row) {
     $empExtra->execute(array(':empno' => $row['EMPNO']));
-    $row += $empExtra->fetch(PDO::FETCH_ASSOC) ?: array('AADHAR' => null, 'DOJ' => null);
+    $row += $empExtra->fetch(PDO::FETCH_ASSOC) ?: array('AADHAR' => null, 'BANK_BRANCH' => null, 'DOJ' => null);
     $loans = loanSlipSummary($db, $row['EMPNO'], $sheet_id, $monthEnd);
     $pdf->AddPage();
     $pdf->SetFont('freesans', '', 9);
@@ -136,7 +131,7 @@ function slipHtml($row, $loans, $period)
         array('Post', $row['DESIGNATION'], 'Grade', $row['GRADE']),
         array('Date of Joining', slipDate($row['DOJ']), 'Mobile', $row['PHONE1']),
         array('PAN', $row['PAN'], 'Aadhaar', slipAadhaar($row['AADHAR'])),
-        array('Bank', $row['BANK'], 'Account No.', $row['ACCNO']),
+        array('Bank', slipBankWithBranch($row), 'Account No.', $row['ACCNO']),
     );
     // The pay month heads the details, where the old slip had it
     $html .= '<table cellpadding="3" cellspacing="0" style="' . $rule . '">'

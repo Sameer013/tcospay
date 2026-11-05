@@ -476,6 +476,12 @@ label {
                                     </div>
 
                                     <div class="flex items-center">
+                                        <label for="txt_branch" class="w-1/3">Bank Branch:</label>
+                                        <input type="text" id="txt_branch" name="txt_branch" placeholder="Bank Branch"
+                                            readonly class="p-2 w-2/3 bg-transparent">
+                                    </div>
+
+                                    <div class="flex items-center">
                                         <label for="txt_accNo" class="w-1/3">Bank Account No:</label>
                                         <input type="text" id="txt_accNo" name="txt_accNo"
                                             placeholder="Enter Bank Account No" readonly
@@ -1317,6 +1323,11 @@ label {
                                                     }
                                                     ?>
                                                 </select>
+                                            </div>
+                                            <div class="col-span-12 sm:col-span-6">
+                                                <label class="form-label" for="txt_Branch">Bank Branch:</label>
+                                                <input type="text" class="form-control rounded-pill text-dark"
+                                                    name="txt_Branch" id="txt_Branch" placeholder="e.g. Telco Town Branch" maxlength="80" />
                                             </div>
                                             <div class="col-span-12 sm:col-span-6">
                                                 <label class="form-label">Bank Account No.: *</label>
@@ -2234,6 +2245,7 @@ function updateLeaveSummary(res) {
 function populateFinanceView(data) {
     $("#txt_finance_name").val(data.NAME);
     $("#txt_bank").val(data.DESCR);
+    $("#txt_branch").val(data.BANK_BRANCH);
     $("#txt_accNo").val(data.ACCNO);
     $("#txt_esic").val(data.ADDRESS1);
     $("#txt_finance_pan").val(data.PAN);
@@ -2453,6 +2465,7 @@ function load_data_finance(EMPNO) {
         success: function (data) {
             $("#txt_finance_name").val(data.NAME);
             $("#txt_bank").val(data.DESCR);
+            $("#txt_branch").val(data.BANK_BRANCH);
             $("#txt_accNo").val(data.ACCNO);
             $("#txt_esic").val(data.ADDRESS1);
             $("#txt_finance_pan").val(data.PAN);
@@ -2657,6 +2670,7 @@ function show_general_data(empno, modalSelector) {
 
             // --- Finance Modal ---
             $("#txt_Bank").val(data.BID);
+            $("#txt_Branch").val(data.BANK_BRANCH);
             $("#txt_AccNo").val(data.ACCNO);
             $("#txt_Esic").val(data.ADDRESS1);
             $("#txt_FinancePan").val(data.PAN);

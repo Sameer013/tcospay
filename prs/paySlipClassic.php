@@ -28,13 +28,8 @@ if (empty($rows)) {
 // Aadhaar is printed as XXXX XXXX 1234 (UIDAI advises masking it on documents); false prints all 12 digits
 define('SLIP_MASK_AADHAAR', true);
 
-// Aadhaar comes from migrations/2026_10_31_payslip_staff_aadhar.sql; until it runs the slip shows NA
-try {
-    $aadharStmt = $db->prepare("SELECT AADHAR FROM empmast WHERE EMPNO = :empno");
-    $aadharStmt->execute(array(':empno' => 0));
-} catch (PDOException $e) {
-    $aadharStmt = null;
-}
+// Aadhaar and bank branch are only needed here (NA / bank only until their migrations run)
+$empExtra = slipExtrasStatement($db);
 
 $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, 'A4', true, 'UTF-8', false);
 $pdf->SetPrintHeader(false);
@@ -43,11 +38,8 @@ $pdf->SetPrintFooter(false);
 // for ($index = 0; $index < count($rows); $index += 2) {
 for ($index = 0; $index < count($rows); $index++) {
     $pdf->AddPage();
-    $rows[$index]['AADHAR'] = null;
-    if ($aadharStmt) {
-        $aadharStmt->execute(array(':empno' => $rows[$index]['EMPNO']));
-        $rows[$index]['AADHAR'] = $aadharStmt->fetchColumn();
-    }
+    $empExtra->execute(array(':empno' => $rows[$index]['EMPNO']));
+    $rows[$index] += $empExtra->fetch(PDO::FETCH_ASSOC) ?: array('AADHAR' => null, 'BANK_BRANCH' => null, 'DOJ' => null);
     $loans = loanSlipSummary($db, $rows[$index]['EMPNO'], $sheet_id, $monthEnd);
     printData($pdf, $rows[$index], $index, $selectedYear, $month, $loans);
 }
@@ -185,7 +177,7 @@ function printData($pdf, $row, $index, $selectedYear, $month, $loans)
     $pdf->Cell(20, 5, $row['dpaid'], 1, 0, 'C');
     $pdf->SetX(125);
     $pdf->SetFont('freesans', '', 6);
-    $pdf->Cell(50, 5, strtoupper((string) $row['BANK']), 1, 0, 'C');
+    $pdf->Cell(50, 5, strtoupper(slipBankWithBranch($row)), 1, 0, 'C');
     $pdf->SetX(175);
     $pdf->SetFont('freesans', '', 8);
     $pdf->Cell(25, 5, $row['ACCNO'], 1, 1, 'C');

@@ -855,6 +855,7 @@ return function (App $app) {
         $dsgcode     = $nullIfEmpty($pickValue('Dsgcode', 'DSGCODE'));
         $cardno      = $nullIfEmpty($pickValue('Cardno', 'cardno'));
         $accNo       = $nullIfEmpty($pickValue('AccNo', 'ACCNO'));
+        $branch      = $nullIfEmpty(trim((string) $pickValue('Branch', 'BANK_BRANCH')));
         $pfacno      = $nullIfEmpty($pickValue('Pf', 'PFACNO'));
         $incrRemark  = $nullIfEmpty($pickValue('IncrRemark', 'incr_remark'));
         $relation    = $nullIfEmpty($pickValue('Relation', 'relation'));
@@ -905,6 +906,7 @@ return function (App $app) {
                     cardno          = :txt_Cardno,
                     BID             = :txt_Bank,
                     ACCNO           = :txt_AccNo,
+                    BANK_BRANCH     = :txt_Branch,
                     BASIC           = :txt_Basic,
                     PAYSCALE        = :txt_PayScale,
                     PFACNO          = :txt_Pf,
@@ -943,6 +945,7 @@ return function (App $app) {
         $stmt->bindParam(":txt_Cardno",    $cardno);
         $stmt->bindParam(":txt_Bank",      $bank);
         $stmt->bindParam(":txt_AccNo",     $accNo);
+        $stmt->bindParam(":txt_Branch",    $branch);
         $stmt->bindParam(":txt_Pf",        $pfacno);
         $stmt->bindParam(":txt_IncrRemark",$incrRemark);
         $stmt->bindParam(":txt_Relation",  $relation);
@@ -1487,7 +1490,8 @@ return function (App $app) {
 				$data = null;
 				$data = array("status" => "Ok", "msg" => $msg, "item" => $users);
 			} catch (Exception $e) {
-				$data = array("status" => "Error", "msg" => $e->getMessage(), "item" => $sql);
+				// The duplicate checks can throw before the UPDATE is built, so don't echo $sql here
+				$data = array("status" => "Error", "msg" => $e->getMessage());
 				$status = 200;
 			}
 			$response->getBody()->write(json_encode($data));
